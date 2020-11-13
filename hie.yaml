@@ -1,0 +1,16 @@
+cradle:
+  multi:
+    # - path: "ignore/"
+    #   config: {cradle: {none: }}
+
+    - path: "src"
+      config: {cradle: {cabal: {component: "lib:language-zig"}}}
+
+    - path: "app"
+      config: {cradle: {cabal: {component: "language-zig:language-zig-exe"}}}
+
+    - path: "test"
+      config: {cradle: {cabal: {component: "language-zig:language-zig-test"}}}
+
+    - path: "bench"
+      config: {cradle: {cabal: {component: "language-zig:language-zig-bench"}}}
