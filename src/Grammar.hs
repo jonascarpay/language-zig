@@ -6,44 +6,15 @@
 
 module Grammar where
 
-import Control.Applicative
 import Data.List.NonEmpty (NonEmpty)
 import Data.Typeable (Typeable)
 import GHC.Generics
 
-data Parser a
-
-instance Functor Parser
-
-instance Applicative Parser
-
-instance Alternative Parser
-
-instance Monad Parser
-
-data Loc
-
-data MutA b x = MutA b x
-
-data MutB a x = MutB a x
-
 data Sum f g a = This (f a) | That (g a)
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-todo :: a
-todo = error "TODO"
-
--- -- Root <- skip ContainerMembers eof
--- root :: Parser AST
--- root = undefined -- skip *> pContainerMembers <* eof
-
-skip :: Parser ()
-skip = todo
-
-eof :: Parser ()
-eof = todo
-
-type ContainerMembers a = [ContainerMember a]
+-- Root <- skip ContainerMembers eof
+data Root a = Root (ContainerMembers a)
 
 -- ContainerMembers
 --     <- TestDecl ContainerMembers
@@ -53,48 +24,22 @@ type ContainerMembers a = [ContainerMember a]
 --      / ContainerField
 --      /
 
-data ContainerMember a
-  = CMTestDecl (TestDecl a)
-  | CMTopLevelComptime (TopLevelComptime a)
-  | CMTopLevelDecl (Maybe (KeywordPub a)) (TopLevelDecl a)
-  | CMContainerField (ContainerField a)
+data ContainerMembers a
+  = CMTestDecl (TestDecl a) (ContainerMembers a)
+  | CMTopLevelComptime (TopLevelComptime a) (ContainerMembers a)
+  | CMTopLevelDecl (Maybe (KeywordPub a)) (TopLevelDecl a) (ContainerMembers a)
+  | CMContainerField (ContainerField a) (Maybe (ContainerMembers a))
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pContainerMembers :: Parser (ContainerMember Loc)
-pContainerMembers = todo
-
--- asum
---   [ (CMTestDecl <$> pTestDecl) *> pContainerMembers,
---     (CMTopLevelComptime <$> pTopLevelCompTime) *> pContainerMembers,
---     (CMTopLevelDecl <$> todo <*> pTopLevelDecl) *> pContainerMembers,
---     (CMContainerField <$> pContainerField) *> pComma *> pContainerMembers,
---     CMContainerField <$> pContainerField
---   ]
-
-pToken :: String -> Parser ()
-pToken = todo
-
-pKeyword :: String -> Parser Loc
-pKeyword = todo
-
-pComma :: Parser ()
-pComma = todo
 
 -- TestDecl <- KEYWORD_test STRINGLITERALSINGLE Block
 
 data TestDecl a = TestDecl (StringLiteralSingle a) (Block a)
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pTestDecl :: Parser (TestDecl a)
-pTestDecl = pToken "test" *> (TestDecl <$> pStringLiteralSingle <*> pBlock)
-
 -- TopLevelComptime <- KEYWORD_comptime BlockExpr
 
 data TopLevelComptime a = TopLevelComptime (BlockExpr a)
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pTopLevelCompTime :: Parser (TopLevelComptime a)
-pTopLevelCompTime = todo
 
 -- TopLevelDecl
 --     <- (KEYWORD_export / KEYWORD_extern STRINGLITERALSINGLE? / KEYWORD_inline)? FnProto (SEMICOLON / Block)
@@ -117,9 +62,6 @@ data TLVarDeclQualifier a
   = VarExport (KeywordExport a)
   | VarExtern (KeywordExtern a) (Maybe (StringLiteralSingle a))
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pTopLevelDecl :: Parser (TopLevelDecl a)
-pTopLevelDecl = todo
 
 -- FnProto <- KEYWORD_fn IDENTIFIER? LPAREN ParamDeclList RPAREN ByteAlign? LinkSection? EXCLAMATIONMARK? (KEYWORD_anytype / TypeExpr)
 
@@ -159,9 +101,6 @@ data ContainerField a
       (Maybe (TypeExpr a))
       (Maybe (Expr a))
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pContainerField :: Parser (ContainerField a)
-pContainerField = todo
 
 -- # *** Block Level ***
 -- Statement
@@ -340,9 +279,6 @@ data IfExpr a
 
 data Block a = Block [Statement a]
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pBlock :: Parser (Block a)
-pBlock = undefined
 
 -- LoopExpr <- KEYWORD_inline? (ForExpr / WhileExpr)
 
@@ -942,9 +878,6 @@ data IntLit a = IntLit a Integer
 data StringLiteralSingle a = StringLiteralSingle a String
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pStringLiteralSingle :: Parser (StringLiteralSingle a)
-pStringLiteralSingle = todo
-
 -- STRINGLITERAL
 --     <- STRINGLITERALSINGLE
 --      / line_string                 skip
@@ -1093,301 +1026,151 @@ data BuiltinIdentifier a = BuiltinIdentifier a String
 newtype KeywordAlign a = KeywordAlign {unKeywordAlign :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordAlign :: Parser (KeywordAlign Loc)
-pKeywordAlign = KeywordAlign <$> pKeyword "align"
-
 newtype KeywordAnd a = KeywordAnd {unKeywordAnd :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordAnd :: Parser (KeywordAnd Loc)
-pKeywordAnd = KeywordAnd <$> pKeyword "and"
 
 newtype KeywordAnyframe a = KeywordAnyframe {unKeywordAnyframe :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordAnyframe :: Parser (KeywordAnyframe Loc)
-pKeywordAnyframe = KeywordAnyframe <$> pKeyword "anyframe"
-
 newtype KeywordAnytype a = KeywordAnytype {unKeywordAnytype :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordAnytype :: Parser (KeywordAnytype Loc)
-pKeywordAnytype = KeywordAnytype <$> pKeyword "anytype"
 
 newtype KeywordAllowzero a = KeywordAllowzero {unKeywordAllowzero :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordAllowzero :: Parser (KeywordAllowzero Loc)
-pKeywordAllowzero = KeywordAllowzero <$> pKeyword "allowzero"
-
 newtype KeywordAsm a = KeywordAsm {unKeywordAsm :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordAsm :: Parser (KeywordAsm Loc)
-pKeywordAsm = KeywordAsm <$> pKeyword "asm"
 
 newtype KeywordAsync a = KeywordAsync {unKeywordAsync :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordAsync :: Parser (KeywordAsync Loc)
-pKeywordAsync = KeywordAsync <$> pKeyword "async"
-
 newtype KeywordAwait a = KeywordAwait {unKeywordAwait :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordAwait :: Parser (KeywordAwait Loc)
-pKeywordAwait = KeywordAwait <$> pKeyword "await"
 
 newtype KeywordBreak a = KeywordBreak {unKeywordBreak :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordBreak :: Parser (KeywordBreak Loc)
-pKeywordBreak = KeywordBreak <$> pKeyword "break"
-
 newtype KeywordCatch a = KeywordCatch {unKeywordCatch :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordCatch :: Parser (KeywordCatch Loc)
-pKeywordCatch = KeywordCatch <$> pKeyword "catch"
 
 newtype KeywordComptime a = KeywordComptime {unKeywordComptime :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordComptime :: Parser (KeywordComptime Loc)
-pKeywordComptime = KeywordComptime <$> pKeyword "comptime"
-
 newtype KeywordConst a = KeywordConst {unKeywordConst :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordConst :: Parser (KeywordConst Loc)
-pKeywordConst = KeywordConst <$> pKeyword "const"
 
 newtype KeywordContinue a = KeywordContinue {unKeywordContinue :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordContinue :: Parser (KeywordContinue Loc)
-pKeywordContinue = KeywordContinue <$> pKeyword "continue"
-
 newtype KeywordDefer a = KeywordDefer {unKeywordDefer :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordDefer :: Parser (KeywordDefer Loc)
-pKeywordDefer = KeywordDefer <$> pKeyword "defer"
 
 newtype KeywordElse a = KeywordElse {unKeywordElse :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordElse :: Parser (KeywordElse Loc)
-pKeywordElse = KeywordElse <$> pKeyword "else"
-
 newtype KeywordEnum a = KeywordEnum {unKeywordEnum :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordEnum :: Parser (KeywordEnum Loc)
-pKeywordEnum = KeywordEnum <$> pKeyword "enum"
 
 newtype KeywordErrdefer a = KeywordErrdefer {unKeywordErrdefer :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordErrdefer :: Parser (KeywordErrdefer Loc)
-pKeywordErrdefer = KeywordErrdefer <$> pKeyword "errdefer"
-
 newtype KeywordError a = KeywordError {unKeywordError :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordError :: Parser (KeywordError Loc)
-pKeywordError = KeywordError <$> pKeyword "error"
 
 newtype KeywordExport a = KeywordExport {unKeywordExport :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordExport :: Parser (KeywordExport Loc)
-pKeywordExport = KeywordExport <$> pKeyword "export"
-
 newtype KeywordExtern a = KeywordExtern {unKeywordExtern :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordExtern :: Parser (KeywordExtern Loc)
-pKeywordExtern = KeywordExtern <$> pKeyword "extern"
 
 newtype KeywordFalse a = KeywordFalse {unKeywordFalse :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordFalse :: Parser (KeywordFalse Loc)
-pKeywordFalse = KeywordFalse <$> pKeyword "false"
-
 newtype KeywordFor a = KeywordFor {unKeywordFor :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordFor :: Parser (KeywordFor Loc)
-pKeywordFor = KeywordFor <$> pKeyword "for"
 
 newtype KeywordFn a = KeywordFn {unKeywordFn :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordFn :: Parser (KeywordFn Loc)
-pKeywordFn = KeywordFn <$> pKeyword "fn"
-
 newtype KeywordIf a = KeywordIf {unKeywordIf :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordIf :: Parser (KeywordIf Loc)
-pKeywordIf = KeywordIf <$> pKeyword "if"
 
 newtype KeywordInline a = KeywordInline {unKeywordInline :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordInline :: Parser (KeywordInline Loc)
-pKeywordInline = KeywordInline <$> pKeyword "inline"
-
 newtype KeywordNoalias a = KeywordNoalias {unKeywordNoalias :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordNoalias :: Parser (KeywordNoalias Loc)
-pKeywordNoalias = KeywordNoalias <$> pKeyword "noalias"
 
 newtype KeywordNull a = KeywordNull {unKeywordNull :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordNull :: Parser (KeywordNull Loc)
-pKeywordNull = KeywordNull <$> pKeyword "null"
-
 newtype KeywordOpaque a = KeywordOpaque {unKeywordOpaque :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordOpaque :: Parser (KeywordOpaque Loc)
-pKeywordOpaque = KeywordOpaque <$> pKeyword "opaque"
 
 newtype KeywordOr a = KeywordOr {unKeywordOr :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordOr :: Parser (KeywordOr Loc)
-pKeywordOr = KeywordOr <$> pKeyword "or"
-
 newtype KeywordOrelse a = KeywordOrelse {unKeywordOrelse :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordOrelse :: Parser (KeywordOrelse Loc)
-pKeywordOrelse = KeywordOrelse <$> pKeyword "orelse"
 
 newtype KeywordPacked a = KeywordPacked {unKeywordPacked :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordPacked :: Parser (KeywordPacked Loc)
-pKeywordPacked = KeywordPacked <$> pKeyword "packed"
-
 newtype KeywordPub a = KeywordPub {unKeywordPub :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordPub :: Parser (KeywordPub Loc)
-pKeywordPub = KeywordPub <$> pKeyword "pub"
 
 newtype KeywordResume a = KeywordResume {unKeywordResume :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordResume :: Parser (KeywordResume Loc)
-pKeywordResume = KeywordResume <$> pKeyword "resume"
-
 newtype KeywordReturn a = KeywordReturn {unKeywordReturn :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordReturn :: Parser (KeywordReturn Loc)
-pKeywordReturn = KeywordReturn <$> pKeyword "return"
 
 newtype KeywordLinksection a = KeywordLinksection {unKeywordLinksection :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordLinksection :: Parser (KeywordLinksection Loc)
-pKeywordLinksection = KeywordLinksection <$> pKeyword "linksection"
-
 newtype KeywordStruct a = KeywordStruct {unKeywordStruct :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordStruct :: Parser (KeywordStruct Loc)
-pKeywordStruct = KeywordStruct <$> pKeyword "struct"
 
 newtype KeywordSuspend a = KeywordSuspend {unKeywordSuspend :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordSuspend :: Parser (KeywordSuspend Loc)
-pKeywordSuspend = KeywordSuspend <$> pKeyword "suspend"
-
 newtype KeywordSwitch a = KeywordSwitch {unKeywordSwitch :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordSwitch :: Parser (KeywordSwitch Loc)
-pKeywordSwitch = KeywordSwitch <$> pKeyword "switch"
 
 newtype KeywordTest a = KeywordTest {unKeywordTest :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordTest :: Parser (KeywordTest Loc)
-pKeywordTest = KeywordTest <$> pKeyword "test"
-
 newtype KeywordThreadlocal a = KeywordThreadlocal {unKeywordThreadlocal :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordThreadlocal :: Parser (KeywordThreadlocal Loc)
-pKeywordThreadlocal = KeywordThreadlocal <$> pKeyword "threadlocal"
 
 newtype KeywordTrue a = KeywordTrue {unKeywordTrue :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordTrue :: Parser (KeywordTrue Loc)
-pKeywordTrue = KeywordTrue <$> pKeyword "true"
-
 newtype KeywordTry a = KeywordTry {unKeywordTry :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordTry :: Parser (KeywordTry Loc)
-pKeywordTry = KeywordTry <$> pKeyword "try"
 
 newtype KeywordUndefined a = KeywordUndefined {unKeywordUndefined :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordUndefined :: Parser (KeywordUndefined Loc)
-pKeywordUndefined = KeywordUndefined <$> pKeyword "undefined"
-
 newtype KeywordUnion a = KeywordUnion {unKeywordUnion :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordUnion :: Parser (KeywordUnion Loc)
-pKeywordUnion = KeywordUnion <$> pKeyword "union"
 
 newtype KeywordUnreachable a = KeywordUnreachable {unKeywordUnreachable :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordUnreachable :: Parser (KeywordUnreachable Loc)
-pKeywordUnreachable = KeywordUnreachable <$> pKeyword "unreachable"
-
 newtype KeywordUsingnamespace a = KeywordUsingnamespace {unKeywordUsingnamespace :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordUsingnamespace :: Parser (KeywordUsingnamespace Loc)
-pKeywordUsingnamespace = KeywordUsingnamespace <$> pKeyword "usingnamespace"
 
 newtype KeywordVar a = KeywordVar {unKeywordVar :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordVar :: Parser (KeywordVar Loc)
-pKeywordVar = KeywordVar <$> pKeyword "var"
-
 newtype KeywordVolatile a = KeywordVolatile {unKeywordVolatile :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
-pKeywordVolatile :: Parser (KeywordVolatile Loc)
-pKeywordVolatile = KeywordVolatile <$> pKeyword "volatile"
-
 newtype KeywordWhile a = KeywordWhile {unKeywordWhile :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordWhile :: Parser (KeywordWhile Loc)
-pKeywordWhile = KeywordWhile <$> pKeyword "while"
 
 -- Weird:
 
 newtype KeywordNoSuspend a = KeywordNoSuspend {unKeywordNoSuspend :: a}
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
-
-pKeywordNoSuspend :: Parser (KeywordNoSuspend Loc)
-pKeywordNoSuspend = KeywordNoSuspend <$> pKeyword "nosuspend"

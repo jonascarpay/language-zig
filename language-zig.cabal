@@ -35,6 +35,7 @@ library
     , containers
     , megaparsec
     , mtl
+    , prettyprinter
 
 executable language-zig-exe
   import:         common-options
@@ -49,7 +50,9 @@ test-suite language-zig-test
   hs-source-dirs: test
   main-is:        Spec.hs
   build-depends:
+    , bytestring
     , language-zig
+    , megaparsec
     , tasty
     , tasty-hunit
     , tasty-quickcheck
