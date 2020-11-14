@@ -26,9 +26,14 @@ common common-options
 library
   import:          common-options
   hs-source-dirs:  src
-  exposed-modules: Lib
+  exposed-modules:
+    Grammar
+    Parsing
+
   build-depends:
+    , bytestring
     , containers
+    , megaparsec
     , mtl
 
 executable language-zig-exe
