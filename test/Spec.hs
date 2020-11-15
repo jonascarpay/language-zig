@@ -39,21 +39,32 @@ testParser group p success failures =
           testGroup "failure" testFailure
         ]
   where
-    testSuccess =
-      fmap (\(n, s) -> testCase n $ testParse p s) success
-    testFailure =
-      fmap (\(n, s) -> testCase n $ testParseFail p s) failures
+    testSuccess = fmap (\(n, s) -> testCase n $ testParse p s) success
+    testFailure = fmap (\(n, s) -> testCase n $ testParseFail p s) failures
 
 main :: IO ()
 main =
   defaultMain $
-    testParser
-      "single token"
-      (pKeyword "token" <* eof)
-      [ ("naked", "token"),
-        ("trailing space", "token   "),
-        ("trailing comment", "token // hurr")
-      ]
-      [ ("empty", ""),
-        ("leading space", "   token")
+    testGroup
+      "tokenization"
+      [ testParser
+          "single identifier"
+          (identifier *> eof)
+          [ ("naked", "token"),
+            ("trailing space", "token   "),
+            ("trailing comment", "token // hurr")
+          ]
+          [ ("empty", ""),
+            ("leading space", "   token"),
+            ("leading digit", "0token")
+          ],
+        testParser
+          "two identifiers"
+          (identifier *> identifier *> eof)
+          [ ("naked", "token1 token2"),
+            ("separated by newline", "a\nb"),
+            ("separated by tab", "a\tb"),
+            ("separated by comment", "a// comment\nb")
+          ]
+          [("unspaced", "ab")]
       ]

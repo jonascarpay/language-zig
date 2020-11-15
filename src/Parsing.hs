@@ -2,8 +2,12 @@
 
 module Parsing where
 
+import Control.Applicative
+import Control.Monad
 import Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
 import Data.Void (Void)
+import Data.Word (Word8)
 import Grammar
 import Text.Megaparsec
 import Text.Megaparsec.Byte
@@ -14,12 +18,26 @@ type Parser = Parsec Void ByteString
 data Span = Span SourcePos SourcePos
   deriving (Show, Eq)
 
-sc :: Parser ()
-sc =
-  Lex.space
-    space1
-    (Lex.skipLineComment "//")
-    empty
+isLower, isUpper, isUnderscore, isDigit :: Word8 -> Bool
+isLower c = c >= 97 && c <= 122
+isUpper c = c >= 65 && c <= 90
+isDigit c = c >= 48 && c <= 57
+isUnderscore c = c == 95
+
+lexeme :: Parser a -> Parser a
+lexeme = Lex.lexeme skip
+  where
+    skip :: Parser ()
+    skip = Lex.space space1 (Lex.skipLineComment "//") empty
+
+identifier :: Parser ByteString
+identifier = lexeme $ do
+  h <- satisfy isAlpha_ <?> "alphabetic character"
+  t <- takeWhileP (Just "alphanumeric character") isAlphaNum_
+  pure $ BS.cons h t
+  where
+    isAlpha_ c = isLower c || isUpper c || isUnderscore c
+    isAlphaNum_ c = isLower c || isUpper c || isUnderscore c || isDigit c
 
 pPos :: Parser SourcePos
 pPos = pstateSourcePos . statePosState <$> getParserState
@@ -29,7 +47,6 @@ pKeyword str = do
   a <- pPos
   _ <- chunk str
   b <- pPos
-  sc
   pure (Span a b)
 
 pKeywordAlign :: Parser (KeywordAlign Span)
