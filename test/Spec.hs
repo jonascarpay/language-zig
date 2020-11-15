@@ -5,6 +5,7 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as CS
 import Grammar
+import Parser
 import Parsing
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -46,25 +47,54 @@ main :: IO ()
 main =
   defaultMain $
     testGroup
-      "tokenization"
-      [ testParser
-          "single identifier"
-          (identifier *> eof)
-          [ ("naked", "token"),
-            ("trailing space", "token   "),
-            ("trailing comment", "token // hurr")
-          ]
-          [ ("empty", ""),
-            ("leading space", "   token"),
-            ("leading digit", "0token")
+      "tests"
+      [ testGroup
+          "tokenization"
+          [ testParser
+              "token"
+              (keyword "token" <* eof)
+              [ ("naked", "token"),
+                ("trailing space", "token   "),
+                ("trailing comment", "token // hurr"),
+                ("newline comment", "token\n// hurr")
+              ]
+              [ ("empty", ""),
+                ("leading comment", "// hurr\ntoken"),
+                ("leading space", "   token"),
+                ("two words", "token token")
+              ],
+            testParser
+              "two identifier"
+              ((,) <$> keyword "a" <*> keyword "b" <* eof)
+              [ ("naked", "a b"),
+                ("separated by newline", "a\nb"),
+                ("separated by tab", "a\tb"),
+                ("separated by comment", "a// comment\nb")
+              ]
+              [ ("unspaced", "ab"),
+                ("three tokens", "a b c")
+              ]
           ],
         testParser
-          "two identifiers"
-          (identifier *> identifier *> eof)
-          [ ("naked", "token1 token2"),
-            ("separated by newline", "a\nb"),
-            ("separated by tab", "a\tb"),
-            ("separated by comment", "a// comment\nb")
+          "word"
+          word
+          [ ("naked", "word"),
+            ("leading _", "_word"),
+            ("capitalized", "Word"),
+            ("digits", "w0rd")
           ]
-          [("unspaced", "ab")]
+          [ ("empty", ""),
+            ("leading digits", "0word"),
+            ("leading @", "@word")
+          ],
+        testParser
+          "identifier"
+          identifier
+          [ ("normal", "normal"),
+            ("nonleading digits", "d1g1ts_"),
+            ("leading @", "@ident")
+          ]
+          [ ("keyword", "comptime"),
+            ("leading digit", "0token")
+          ]
       ]

@@ -28,6 +28,7 @@ library
   hs-source-dirs:  src
   exposed-modules:
     Grammar
+    Parser
     Parsing
 
   build-depends:
@@ -48,18 +49,21 @@ test-suite language-zig-test
   import:         common-options
   type:           exitcode-stdio-1.0
 
-  -- hs-source-dirs: test
   -- hack to get ghcid reload for tests, see https://github.com/ndmitchell/ghcid/issues/320#issuecomment-714734766
   hs-source-dirs: test src
+
+  -- hs-source-dirs: test
   main-is:        Spec.hs
   build-depends:
     , bytestring
+    , containers
     , language-zig
     , megaparsec
     , tasty
     , tasty-hunit
     , tasty-quickcheck
 
+  -- containers is not actually used, see hack
   ghc-options:    -threaded -rtsopts -with-rtsopts=-N
 
 benchmark language-zig-bench

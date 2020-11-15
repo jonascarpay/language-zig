@@ -6,6 +6,7 @@
 
 module Grammar where
 
+import Data.ByteString (ByteString)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Typeable (Typeable)
 import GHC.Generics
@@ -890,8 +891,8 @@ data StringLit a = StringLit a String
 --      / "@\"" string_char* "\""                            skip
 
 data Identifier a
-  = Identifier a String
-  | AtIdentifier a String
+  = Identifier a ByteString
+  | AtIdentifier a ByteString
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- BUILTINIDENTIFIER <- "@"[A-Za-z_][A-Za-z0-9_]* skip

@@ -1,205 +1,175 @@
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Parsing where
 
-import Control.Applicative
 import Control.Monad
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
-import Data.Void (Void)
-import Data.Word (Word8)
+import qualified Data.ByteString.Char8 as BS8
+import qualified Data.Set as S
 import Grammar
+import Parser
 import Text.Megaparsec
-import Text.Megaparsec.Byte
-import qualified Text.Megaparsec.Byte.Lexer as Lex
 
-type Parser = Parsec Void ByteString
-
-data Span = Span SourcePos SourcePos
-  deriving (Show, Eq)
-
-isLower, isUpper, isUnderscore, isDigit :: Word8 -> Bool
-isLower c = c >= 97 && c <= 122
-isUpper c = c >= 65 && c <= 90
-isDigit c = c >= 48 && c <= 57
-isUnderscore c = c == 95
-
-lexeme :: Parser a -> Parser a
-lexeme = Lex.lexeme skip
-  where
-    skip :: Parser ()
-    skip = Lex.space space1 (Lex.skipLineComment "//") empty
-
-identifier :: Parser ByteString
-identifier = lexeme $ do
-  h <- satisfy isAlpha_ <?> "alphabetic character"
-  t <- takeWhileP (Just "alphanumeric character") isAlphaNum_
-  pure $ BS.cons h t
-  where
-    isAlpha_ c = isLower c || isUpper c || isUnderscore c
-    isAlphaNum_ c = isLower c || isUpper c || isUnderscore c || isDigit c
-
-pPos :: Parser SourcePos
-pPos = pstateSourcePos . statePosState <$> getParserState
-
-pKeyword :: ByteString -> Parser Span
-pKeyword str = do
-  a <- pPos
-  _ <- chunk str
-  b <- pPos
-  pure (Span a b)
+identifier :: Parser (Identifier Span)
+identifier = do
+  atId <- True <$ chunk "@" <|> pure False
+  (s, w) <- lexeme word
+  when (isKeyword w) $ fail $ BS8.unpack w <> " is a keyword" -- TODO proper error
+  pure $ if atId then Identifier s w else AtIdentifier s w
 
 pKeywordAlign :: Parser (KeywordAlign Span)
-pKeywordAlign = KeywordAlign <$> pKeyword "align"
+pKeywordAlign = KeywordAlign <$> keyword "align"
 
 pKeywordAnd :: Parser (KeywordAnd Span)
-pKeywordAnd = KeywordAnd <$> pKeyword "and"
+pKeywordAnd = KeywordAnd <$> keyword "and"
 
 pKeywordAnyframe :: Parser (KeywordAnyframe Span)
-pKeywordAnyframe = KeywordAnyframe <$> pKeyword "anyframe"
+pKeywordAnyframe = KeywordAnyframe <$> keyword "anyframe"
 
 pKeywordAnytype :: Parser (KeywordAnytype Span)
-pKeywordAnytype = KeywordAnytype <$> pKeyword "anytype"
+pKeywordAnytype = KeywordAnytype <$> keyword "anytype"
 
 pKeywordAllowzero :: Parser (KeywordAllowzero Span)
-pKeywordAllowzero = KeywordAllowzero <$> pKeyword "allowzero"
+pKeywordAllowzero = KeywordAllowzero <$> keyword "allowzero"
 
 pKeywordAsm :: Parser (KeywordAsm Span)
-pKeywordAsm = KeywordAsm <$> pKeyword "asm"
+pKeywordAsm = KeywordAsm <$> keyword "asm"
 
 pKeywordAsync :: Parser (KeywordAsync Span)
-pKeywordAsync = KeywordAsync <$> pKeyword "async"
+pKeywordAsync = KeywordAsync <$> keyword "async"
 
 pKeywordAwait :: Parser (KeywordAwait Span)
-pKeywordAwait = KeywordAwait <$> pKeyword "await"
+pKeywordAwait = KeywordAwait <$> keyword "await"
 
 pKeywordBreak :: Parser (KeywordBreak Span)
-pKeywordBreak = KeywordBreak <$> pKeyword "break"
+pKeywordBreak = KeywordBreak <$> keyword "break"
 
 pKeywordCatch :: Parser (KeywordCatch Span)
-pKeywordCatch = KeywordCatch <$> pKeyword "catch"
+pKeywordCatch = KeywordCatch <$> keyword "catch"
 
 pKeywordComptime :: Parser (KeywordComptime Span)
-pKeywordComptime = KeywordComptime <$> pKeyword "comptime"
+pKeywordComptime = KeywordComptime <$> keyword "comptime"
 
 pKeywordConst :: Parser (KeywordConst Span)
-pKeywordConst = KeywordConst <$> pKeyword "const"
+pKeywordConst = KeywordConst <$> keyword "const"
 
 pKeywordContinue :: Parser (KeywordContinue Span)
-pKeywordContinue = KeywordContinue <$> pKeyword "continue"
+pKeywordContinue = KeywordContinue <$> keyword "continue"
 
 pKeywordDefer :: Parser (KeywordDefer Span)
-pKeywordDefer = KeywordDefer <$> pKeyword "defer"
+pKeywordDefer = KeywordDefer <$> keyword "defer"
 
 pKeywordElse :: Parser (KeywordElse Span)
-pKeywordElse = KeywordElse <$> pKeyword "else"
+pKeywordElse = KeywordElse <$> keyword "else"
 
 pKeywordEnum :: Parser (KeywordEnum Span)
-pKeywordEnum = KeywordEnum <$> pKeyword "enum"
+pKeywordEnum = KeywordEnum <$> keyword "enum"
 
 pKeywordErrdefer :: Parser (KeywordErrdefer Span)
-pKeywordErrdefer = KeywordErrdefer <$> pKeyword "errdefer"
+pKeywordErrdefer = KeywordErrdefer <$> keyword "errdefer"
 
 pKeywordError :: Parser (KeywordError Span)
-pKeywordError = KeywordError <$> pKeyword "error"
+pKeywordError = KeywordError <$> keyword "error"
 
 pKeywordExport :: Parser (KeywordExport Span)
-pKeywordExport = KeywordExport <$> pKeyword "export"
+pKeywordExport = KeywordExport <$> keyword "export"
 
 pKeywordExtern :: Parser (KeywordExtern Span)
-pKeywordExtern = KeywordExtern <$> pKeyword "extern"
+pKeywordExtern = KeywordExtern <$> keyword "extern"
 
 pKeywordFalse :: Parser (KeywordFalse Span)
-pKeywordFalse = KeywordFalse <$> pKeyword "false"
+pKeywordFalse = KeywordFalse <$> keyword "false"
 
 pKeywordFor :: Parser (KeywordFor Span)
-pKeywordFor = KeywordFor <$> pKeyword "for"
+pKeywordFor = KeywordFor <$> keyword "for"
 
 pKeywordFn :: Parser (KeywordFn Span)
-pKeywordFn = KeywordFn <$> pKeyword "fn"
+pKeywordFn = KeywordFn <$> keyword "fn"
 
 pKeywordIf :: Parser (KeywordIf Span)
-pKeywordIf = KeywordIf <$> pKeyword "if"
+pKeywordIf = KeywordIf <$> keyword "if"
 
 pKeywordInline :: Parser (KeywordInline Span)
-pKeywordInline = KeywordInline <$> pKeyword "inline"
+pKeywordInline = KeywordInline <$> keyword "inline"
 
 pKeywordNoalias :: Parser (KeywordNoalias Span)
-pKeywordNoalias = KeywordNoalias <$> pKeyword "noalias"
+pKeywordNoalias = KeywordNoalias <$> keyword "noalias"
 
 pKeywordNull :: Parser (KeywordNull Span)
-pKeywordNull = KeywordNull <$> pKeyword "null"
+pKeywordNull = KeywordNull <$> keyword "null"
 
 pKeywordOpaque :: Parser (KeywordOpaque Span)
-pKeywordOpaque = KeywordOpaque <$> pKeyword "opaque"
+pKeywordOpaque = KeywordOpaque <$> keyword "opaque"
 
 pKeywordOr :: Parser (KeywordOr Span)
-pKeywordOr = KeywordOr <$> pKeyword "or"
+pKeywordOr = KeywordOr <$> keyword "or"
 
 pKeywordOrelse :: Parser (KeywordOrelse Span)
-pKeywordOrelse = KeywordOrelse <$> pKeyword "orelse"
+pKeywordOrelse = KeywordOrelse <$> keyword "orelse"
 
 pKeywordPacked :: Parser (KeywordPacked Span)
-pKeywordPacked = KeywordPacked <$> pKeyword "packed"
+pKeywordPacked = KeywordPacked <$> keyword "packed"
 
 pKeywordPub :: Parser (KeywordPub Span)
-pKeywordPub = KeywordPub <$> pKeyword "pub"
+pKeywordPub = KeywordPub <$> keyword "pub"
 
 pKeywordResume :: Parser (KeywordResume Span)
-pKeywordResume = KeywordResume <$> pKeyword "resume"
+pKeywordResume = KeywordResume <$> keyword "resume"
 
 pKeywordReturn :: Parser (KeywordReturn Span)
-pKeywordReturn = KeywordReturn <$> pKeyword "return"
+pKeywordReturn = KeywordReturn <$> keyword "return"
 
 pKeywordLinksection :: Parser (KeywordLinksection Span)
-pKeywordLinksection = KeywordLinksection <$> pKeyword "linksection"
+pKeywordLinksection = KeywordLinksection <$> keyword "linksection"
 
 pKeywordStruct :: Parser (KeywordStruct Span)
-pKeywordStruct = KeywordStruct <$> pKeyword "struct"
+pKeywordStruct = KeywordStruct <$> keyword "struct"
 
 pKeywordSuspend :: Parser (KeywordSuspend Span)
-pKeywordSuspend = KeywordSuspend <$> pKeyword "suspend"
+pKeywordSuspend = KeywordSuspend <$> keyword "suspend"
 
 pKeywordSwitch :: Parser (KeywordSwitch Span)
-pKeywordSwitch = KeywordSwitch <$> pKeyword "switch"
+pKeywordSwitch = KeywordSwitch <$> keyword "switch"
 
 pKeywordTest :: Parser (KeywordTest Span)
-pKeywordTest = KeywordTest <$> pKeyword "test"
+pKeywordTest = KeywordTest <$> keyword "test"
 
 pKeywordThreadlocal :: Parser (KeywordThreadlocal Span)
-pKeywordThreadlocal = KeywordThreadlocal <$> pKeyword "threadlocal"
+pKeywordThreadlocal = KeywordThreadlocal <$> keyword "threadlocal"
 
 pKeywordTrue :: Parser (KeywordTrue Span)
-pKeywordTrue = KeywordTrue <$> pKeyword "true"
+pKeywordTrue = KeywordTrue <$> keyword "true"
 
 pKeywordTry :: Parser (KeywordTry Span)
-pKeywordTry = KeywordTry <$> pKeyword "try"
+pKeywordTry = KeywordTry <$> keyword "try"
 
 pKeywordUndefined :: Parser (KeywordUndefined Span)
-pKeywordUndefined = KeywordUndefined <$> pKeyword "undefined"
+pKeywordUndefined = KeywordUndefined <$> keyword "undefined"
 
 pKeywordUnion :: Parser (KeywordUnion Span)
-pKeywordUnion = KeywordUnion <$> pKeyword "union"
+pKeywordUnion = KeywordUnion <$> keyword "union"
 
 pKeywordUnreachable :: Parser (KeywordUnreachable Span)
-pKeywordUnreachable = KeywordUnreachable <$> pKeyword "unreachable"
+pKeywordUnreachable = KeywordUnreachable <$> keyword "unreachable"
 
 pKeywordUsingnamespace :: Parser (KeywordUsingnamespace Span)
-pKeywordUsingnamespace = KeywordUsingnamespace <$> pKeyword "usingnamespace"
+pKeywordUsingnamespace = KeywordUsingnamespace <$> keyword "usingnamespace"
 
 pKeywordVar :: Parser (KeywordVar Span)
-pKeywordVar = KeywordVar <$> pKeyword "var"
+pKeywordVar = KeywordVar <$> keyword "var"
 
 pKeywordVolatile :: Parser (KeywordVolatile Span)
-pKeywordVolatile = KeywordVolatile <$> pKeyword "volatile"
+pKeywordVolatile = KeywordVolatile <$> keyword "volatile"
 
 pKeywordWhile :: Parser (KeywordWhile Span)
-pKeywordWhile = KeywordWhile <$> pKeyword "while"
+pKeywordWhile = KeywordWhile <$> keyword "while"
 
 -- Weird:
 
 pKeywordNoSuspend :: Parser (KeywordNoSuspend Span)
-pKeywordNoSuspend = KeywordNoSuspend <$> pKeyword "nosuspend"
+pKeywordNoSuspend = KeywordNoSuspend <$> keyword "nosuspend"
 
 -- Root <- skip ContainerMembers eof
 --
@@ -625,69 +595,59 @@ pKeywordNoSuspend = KeywordNoSuspend <$> pKeyword "nosuspend"
 -- SLASH                <- '/'      ![=]      skip
 -- SLASHEQUAL           <- '/='               skip
 -- TILDE                <- '~'                skip
---
--- end_of_word <- ![a-zA-Z0-9_] skip
--- KEYWORD_align       <- 'align'       end_of_word
--- KEYWORD_allowzero   <- 'allowzero'   end_of_word
--- KEYWORD_and         <- 'and'         end_of_word
--- KEYWORD_anyframe    <- 'anyframe'    end_of_word
--- KEYWORD_anytype     <- 'anytype'     end_of_word
--- KEYWORD_asm         <- 'asm'         end_of_word
--- KEYWORD_async       <- 'async'       end_of_word
--- KEYWORD_await       <- 'await'       end_of_word
--- KEYWORD_break       <- 'break'       end_of_word
--- KEYWORD_catch       <- 'catch'       end_of_word
--- KEYWORD_comptime    <- 'comptime'    end_of_word
--- KEYWORD_const       <- 'const'       end_of_word
--- KEYWORD_continue    <- 'continue'    end_of_word
--- KEYWORD_defer       <- 'defer'       end_of_word
--- KEYWORD_else        <- 'else'        end_of_word
--- KEYWORD_enum        <- 'enum'        end_of_word
--- KEYWORD_errdefer    <- 'errdefer'    end_of_word
--- KEYWORD_error       <- 'error'       end_of_word
--- KEYWORD_export      <- 'export'      end_of_word
--- KEYWORD_extern      <- 'extern'      end_of_word
--- KEYWORD_false       <- 'false'       end_of_word
--- KEYWORD_fn          <- 'fn'          end_of_word
--- KEYWORD_for         <- 'for'         end_of_word
--- KEYWORD_if          <- 'if'          end_of_word
--- KEYWORD_inline      <- 'inline'      end_of_word
--- KEYWORD_noalias     <- 'noalias'     end_of_word
--- KEYWORD_nosuspend   <- 'nosuspend'   end_of_word
--- KEYWORD_null        <- 'null'        end_of_word
--- KEYWORD_opaque      <- 'opaque'      end_of_word
--- KEYWORD_or          <- 'or'          end_of_word
--- KEYWORD_orelse      <- 'orelse'      end_of_word
--- KEYWORD_packed      <- 'packed'      end_of_word
--- KEYWORD_pub         <- 'pub'         end_of_word
--- KEYWORD_resume      <- 'resume'      end_of_word
--- KEYWORD_return      <- 'return'      end_of_word
--- KEYWORD_linksection <- 'linksection' end_of_word
--- KEYWORD_struct      <- 'struct'      end_of_word
--- KEYWORD_suspend     <- 'suspend'     end_of_word
--- KEYWORD_switch      <- 'switch'      end_of_word
--- KEYWORD_test        <- 'test'        end_of_word
--- KEYWORD_threadlocal <- 'threadlocal' end_of_word
--- KEYWORD_true        <- 'true'        end_of_word
--- KEYWORD_try         <- 'try'         end_of_word
--- KEYWORD_undefined   <- 'undefined'   end_of_word
--- KEYWORD_union       <- 'union'       end_of_word
--- KEYWORD_unreachable <- 'unreachable' end_of_word
--- KEYWORD_usingnamespace <- 'usingnamespace' end_of_word
--- KEYWORD_var         <- 'var'         end_of_word
--- KEYWORD_volatile    <- 'volatile'    end_of_word
--- KEYWORD_while       <- 'while'       end_of_word
---
--- keyword <- KEYWORD_align / KEYWORD_and / KEYWORD_anyframe / KEYWORD_anytype
---          / KEYWORD_allowzero / KEYWORD_asm / KEYWORD_async / KEYWORD_await / KEYWORD_break
---          / KEYWORD_catch / KEYWORD_comptime / KEYWORD_const / KEYWORD_continue
---          / KEYWORD_defer / KEYWORD_else / KEYWORD_enum / KEYWORD_errdefer
---          / KEYWORD_error / KEYWORD_export / KEYWORD_extern / KEYWORD_false
---          / KEYWORD_fn / KEYWORD_for / KEYWORD_if / KEYWORD_inline
---          / KEYWORD_noalias / KEYWORD_null / KEYWORD_opaque / KEYWORD_or
---          / KEYWORD_orelse / KEYWORD_packed / KEYWORD_pub
---          / KEYWORD_resume / KEYWORD_return / KEYWORD_linksection
---          / KEYWORD_struct / KEYWORD_suspend
---          / KEYWORD_switch / KEYWORD_test / KEYWORD_threadlocal / KEYWORD_true / KEYWORD_try
---          / KEYWORD_undefined / KEYWORD_union / KEYWORD_unreachable
---          / KEYWORD_usingnamespace / KEYWORD_var / KEYWORD_volatile / KEYWORD_while
+
+isKeyword :: ByteString -> Bool
+isKeyword =
+  flip
+    S.member
+    [ "align",
+      "allowzero",
+      "and",
+      "anyframe",
+      "anytype",
+      "asm",
+      "async",
+      "await",
+      "break",
+      "catch",
+      "comptime",
+      "const",
+      "continue",
+      "defer",
+      "else",
+      "enum",
+      "errdefer",
+      "error",
+      "export",
+      "extern",
+      "false",
+      "fn",
+      "for",
+      "if",
+      "inline",
+      "noalias",
+      "nosuspend",
+      "null",
+      "opaque",
+      "or",
+      "orelse",
+      "packed",
+      "pub",
+      "resume",
+      "return",
+      "linksection",
+      "struct",
+      "suspend",
+      "switch",
+      "test",
+      "threadlocal",
+      "true",
+      "try",
+      "undefined",
+      "union",
+      "unreachable",
+      "usingnamespace",
+      "var",
+      "volatile",
+      "while"
+    ]
