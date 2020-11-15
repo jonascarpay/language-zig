@@ -11,7 +11,7 @@ import qualified Text.Megaparsec.Byte.Lexer as Lex
 
 type Parser = Parsec Void ByteString
 
-data Span = Span Int Int
+data Span = Span SourcePos SourcePos
   deriving (Show, Eq)
 
 sc :: Parser ()
@@ -21,11 +21,14 @@ sc =
     (Lex.skipLineComment "//")
     empty
 
+pPos :: Parser SourcePos
+pPos = pstateSourcePos . statePosState <$> getParserState
+
 pKeyword :: ByteString -> Parser Span
 pKeyword str = do
-  a <- stateOffset <$> getParserState
+  a <- pPos
   _ <- chunk str
-  b <- stateOffset <$> getParserState
+  b <- pPos
   sc
   pure (Span a b)
 
