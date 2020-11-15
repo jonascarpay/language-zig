@@ -6,17 +6,27 @@ import Data.ByteString (ByteString)
 import Data.Void (Void)
 import Grammar
 import Text.Megaparsec
+import Text.Megaparsec.Byte
+import qualified Text.Megaparsec.Byte.Lexer as Lex
 
 type Parser = Parsec Void ByteString
 
 data Span = Span Int Int
   deriving (Show, Eq)
 
+sc :: Parser ()
+sc =
+  Lex.space
+    space1
+    (Lex.skipLineComment "//")
+    empty
+
 pKeyword :: ByteString -> Parser Span
 pKeyword str = do
   a <- stateOffset <$> getParserState
   _ <- chunk str
   b <- stateOffset <$> getParserState
+  sc
   pure (Span a b)
 
 pKeywordAlign :: Parser (KeywordAlign Span)

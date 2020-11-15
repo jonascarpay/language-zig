@@ -16,14 +16,44 @@ testParse parser str =
     Left e -> assertFailure (errorBundlePretty e)
     Right _ -> pure ()
 
-parseKeyword :: String -> Parser a -> TestTree
-parseKeyword str p = testCase str $ testParse p (CS.pack str)
+testParseFail :: Show a => Parser a -> ByteString -> IO ()
+testParseFail parser str =
+  case parse (parser <* eof) "" str of
+    Left _ -> pure ()
+    Right e -> assertFailure $ "Unexpectedly succeeded parsing: " <> show e
+
+testParser ::
+  Show a =>
+  String ->
+  Parser a ->
+  [(String, ByteString)] ->
+  [(String, ByteString)] ->
+  TestTree
+testParser group p success failures =
+  testGroup
+    group
+    $ if null success || null failures
+      then testSuccess <> testFailure
+      else
+        [ testGroup "success" testSuccess,
+          testGroup "failure" testFailure
+        ]
+  where
+    testSuccess =
+      fmap (\(n, s) -> testCase n $ testParse p s) success
+    testFailure =
+      fmap (\(n, s) -> testCase n $ testParseFail p s) failures
 
 main :: IO ()
 main =
   defaultMain $
-    testGroup
-      "simple keywords"
-      [ parseKeyword "comptime" pKeywordComptime,
-        parseKeyword "for" pKeywordFor
+    testParser
+      "single token"
+      (pKeyword "token" <* eof)
+      [ ("naked", "token"),
+        ("trailing space", "token   "),
+        ("trailing comment", "token // hurr")
+      ]
+      [ ("empty", ""),
+        ("leading space", "   token")
       ]
