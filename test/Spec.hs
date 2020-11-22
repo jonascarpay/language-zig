@@ -1,10 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
 import Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as CS
+import Data.ByteString qualified as BS
+import Data.ByteString.Char8 qualified as CS
 import Grammar
+import NeatInterpolation
 import Parser
 import Parsing
 import Test.Tasty
@@ -36,12 +38,12 @@ testParser group p success failures =
     $ if null success || null failures
       then testSuccess <> testFailure
       else
-        [ testGroup "success" testSuccess,
-          testGroup "failure" testFailure
+        [ testGroup "success" testSuccess
+        , testGroup "failure" testFailure
         ]
-  where
-    testSuccess = fmap (\(n, s) -> testCase n $ testParse p s) success
-    testFailure = fmap (\(n, s) -> testCase n $ testParseFail p s) failures
+ where
+  testSuccess = fmap (\(n, s) -> testCase n $ testParse p s) success
+  testFailure = fmap (\(n, s) -> testCase n $ testParseFail p s) failures
 
 main :: IO ()
 main =
@@ -53,48 +55,61 @@ main =
           [ testParser
               "token"
               (keyword "token" <* eof)
-              [ ("naked", "token"),
-                ("trailing space", "token   "),
-                ("trailing comment", "token // hurr"),
-                ("newline comment", "token\n// hurr")
+              [ ("naked", "token")
+              , ("trailing space", "token   ")
+              , ("trailing comment", "token // hurr")
+              , ("newline comment", "token\n// hurr")
               ]
-              [ ("empty", ""),
-                ("leading comment", "// hurr\ntoken"),
-                ("leading space", "   token"),
-                ("two words", "token token")
-              ],
-            testParser
+              [ ("empty", "")
+              , ("leading comment", "// hurr\ntoken")
+              , ("leading space", "   token")
+              , ("two words", "token token")
+              ]
+          , testParser
               "two identifier"
               ((,) <$> keyword "a" <*> keyword "b" <* eof)
-              [ ("naked", "a b"),
-                ("separated by newline", "a\nb"),
-                ("separated by tab", "a\tb"),
-                ("separated by comment", "a// comment\nb")
+              [ ("naked", "a b")
+              , ("separated by newline", "a\nb")
+              , ("separated by tab", "a\tb")
+              , ("separated by comment", "a// comment\nb")
               ]
-              [ ("unspaced", "ab"),
-                ("three tokens", "a b c")
+              [ ("unspaced", "ab")
+              , ("three tokens", "a b c")
               ]
-          ],
-        testParser
+          ]
+      , testParser
           "word"
           word
-          [ ("naked", "word"),
-            ("leading _", "_word"),
-            ("capitalized", "Word"),
-            ("digits", "w0rd")
+          [ ("naked", "word")
+          , ("leading _", "_word")
+          , ("capitalized", "Word")
+          , ("digits", "w0rd")
           ]
-          [ ("empty", ""),
-            ("leading digits", "0word"),
-            ("leading @", "@word")
-          ],
-        testParser
+          [ ("empty", "")
+          , ("leading digits", "0word")
+          , ("leading @", "@word")
+          ]
+      , testParser
           "identifier"
-          identifier
-          [ ("normal", "normal"),
-            ("nonleading digits", "d1g1ts_"),
-            ("leading @", "@ident")
+          pIdentifier
+          [ ("normal", "normal")
+          , ("nonleading digits", "d1g1ts_")
+          , ("leading @", "@ident")
           ]
-          [ ("keyword", "comptime"),
-            ("leading digit", "0token")
+          [ ("keyword", "comptime")
+          , ("leading digit", "0token")
           ]
+      , testParser
+          "root"
+          pRoot
+          [
+            ( "hello world"
+            , [trimming|
+                pub fn main() void {
+                    print("heyyyyy", .{});
+                }" )
+              |]
+            )
+          ]
+          []
       ]

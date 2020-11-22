@@ -2,14 +2,16 @@
 
 module Parser where
 
+import Control.Monad
 import Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as BS8
+import Data.ByteString qualified as BS
+import Data.ByteString.Char8 qualified as BS8
 import Data.Void (Void)
 import Data.Word (Word8)
+import Grammar (Sum (..))
 import Text.Megaparsec
 import Text.Megaparsec.Byte
-import qualified Text.Megaparsec.Byte.Lexer as Lex
+import Text.Megaparsec.Byte.Lexer qualified as Lex
 
 type Parser = Parsec Void ByteString
 
@@ -30,15 +32,16 @@ isAlphaNum_ c = isLower c || isUpper c || isUnderscore c || isDigit c
 
 lexeme :: Parser a -> Parser (Span, a)
 lexeme = Lex.lexeme skip . withSpan
-  where
-    withSpan :: Parser a -> Parser (Span, a)
-    withSpan p = do
-      l <- getOffset
-      a <- p
-      r <- getOffset
-      pure (Span l r, a)
-    skip :: Parser ()
-    skip = Lex.space space1 (Lex.skipLineComment "//") empty
+ where
+  withSpan :: Parser a -> Parser (Span, a)
+  withSpan p = do
+    l <- getOffset
+    a <- p
+    r <- getOffset
+    pure (Span l r, a)
+
+skip :: Parser ()
+skip = Lex.space space1 (Lex.skipLineComment "//") empty
 
 word :: Parser ByteString
 word = do
@@ -46,8 +49,23 @@ word = do
   t <- takeWhileP (Just "alphanumeric character") isAlphaNum_
   pure $ BS.cons h t
 
+symbol :: ByteString -> Parser ()
+symbol = void . Lex.symbol skip
+
+symbool :: ByteString -> Parser Bool
+symbool s = True <$ Lex.symbol skip s <|> pure False
+
+parens :: Parser a -> Parser a
+parens = between (symbol "(") (symbol ")")
+
+commaSep :: Parser a -> Parser [a]
+commaSep = flip sepEndBy (symbol ",")
+
+(<||>) :: Parser (f a) -> Parser (g a) -> Parser (Sum f g a)
+f <||> g = This <$> f <|> That <$> g
+
 keyword :: ByteString -> Parser Span
-keyword str = do
+keyword str = try $ do
   (span, bs) <- lexeme word
   if bs == str
     then pure span

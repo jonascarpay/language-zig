@@ -1,2 +1,10 @@
 packages:
   ./
+
+package language-zig
+  tests: True
+
+source-repository-package
+    type: git
+    location: https://github.com/jonascarpay/neat-interpolation.git
+    tag: 93c2f483b2f8e6696bbfc9d7d07c617bfb30b487

@@ -16,6 +16,7 @@ data Sum f g a = This (f a) | That (g a)
 
 -- Root <- skip ContainerMembers eof
 data Root a = Root (ContainerMembers a)
+  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- ContainerMembers
 --     <- TestDecl ContainerMembers
@@ -68,7 +69,8 @@ data TLVarDeclQualifier a
 
 data FnProto a
   = FnProto
-      (Identifier a)
+      (KeywordFn a)
+      (Maybe (Identifier a))
       [ParamDecl a]
       (Maybe (ByteAlign a))
       (Maybe (LinkSection a))
@@ -269,9 +271,9 @@ data IfExpr a
       (IfPrefix a)
       (Expr a)
       ( Maybe
-          ( KeywordElse a,
-            Maybe (Payload a),
-            Expr a
+          ( KeywordElse a
+          , Maybe (Payload a)
+          , Expr a
           )
       )
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
@@ -409,9 +411,9 @@ data IfTypeExpr a
       (IfPrefix a)
       (TypeExpr a)
       ( Maybe
-          ( KeywordElse a,
-            Maybe (Payload a),
-            TypeExpr a
+          ( KeywordElse a
+          , Maybe (Payload a)
+          , TypeExpr a
           )
       )
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
@@ -444,9 +446,9 @@ data WhileTypeExpr a
       (WhilePrefix a)
       (TypeExpr a)
       ( Maybe
-          ( KeywordElse a,
-            Maybe (Payload a),
-            TypeExpr a
+          ( KeywordElse a
+          , Maybe (Payload a)
+          , TypeExpr a
           )
       )
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
