@@ -107,7 +107,7 @@ main =
             , [trimming|
                 pub fn main() void {
                     print("heyyyyy", .{});
-                }" )
+                }
               |]
             )
           ]

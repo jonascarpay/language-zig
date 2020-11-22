@@ -31,6 +31,7 @@ data ContainerMembers a
   | CMTopLevelComptime (TopLevelComptime a) (ContainerMembers a)
   | CMTopLevelDecl (Maybe (KeywordPub a)) (TopLevelDecl a) (ContainerMembers a)
   | CMContainerField (ContainerField a) (Maybe (ContainerMembers a))
+  | CMContainerEmpty
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- TestDecl <- KEYWORD_test STRINGLITERALSINGLE Block
@@ -850,6 +851,10 @@ data ExprList a = ExprList [Expr a]
 --
 -- line_comment <- '//'[^\n]*
 -- line_string <- ("\\\\" [^\n]* [ \n]*)+
+
+data LineString a = LineString a ByteString
+  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
+
 -- skip <- ([ \n] / line_comment)*
 --
 -- CHAR_LITERAL <- "'" char_char "'" skip
@@ -878,14 +883,16 @@ data IntLit a = IntLit a Integer
 
 -- STRINGLITERALSINGLE <- "\"" string_char* "\"" skip
 
-data StringLiteralSingle a = StringLiteralSingle a String
+data StringLiteralSingle a = StringLiteralSingle a ByteString
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- STRINGLITERAL
 --     <- STRINGLITERALSINGLE
 --      / line_string                 skip
 
-data StringLit a = StringLit a String
+data StringLit a
+  = StringLitSingle (StringLiteralSingle a)
+  | StringLitLine (LineString a)
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- IDENTIFIER
