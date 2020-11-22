@@ -37,6 +37,7 @@ library
     , containers
     , megaparsec
     , mtl
+    , parser-combinators
     , prettyprinter
 
 executable language-zig-exe
@@ -61,11 +62,12 @@ test-suite language-zig-test
     , language-zig
     , megaparsec
     , neat-interpolation
+    , parser-combinators
     , tasty
     , tasty-hunit
     , tasty-quickcheck
 
-  -- containers is not actually used, see hack
+  -- containers, parser-combinators is not actually used, see hack
   ghc-options:    -threaded -rtsopts -with-rtsopts=-N
 
 benchmark language-zig-bench

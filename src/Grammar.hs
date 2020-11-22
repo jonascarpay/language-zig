@@ -74,7 +74,7 @@ data FnProto a
       [ParamDecl a]
       (Maybe (ByteAlign a))
       (Maybe (LinkSection a))
-      Bool
+      (Maybe a)
       (Sum KeywordAnytype TypeExpr a)
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
@@ -199,12 +199,12 @@ data Expr a = Expr [KeywordTry a] (BoolOrExpr a)
 
 -- BoolOrExpr <- BoolAndExpr (KEYWORD_or BoolAndExpr)*
 
-data BoolOrExpr a = BoolOrExpr [BoolAndExpr a]
+data BoolOrExpr a = BoolOrExpr (NonEmpty (BoolAndExpr a))
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- BoolAndExpr <- CompareExpr (KEYWORD_and CompareExpr)*
 
-data BoolAndExpr a = BoolAndExpr [CompareExpr a]
+data BoolAndExpr a = BoolAndExpr (NonEmpty (CompareExpr a))
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- CompareExpr <- BitwiseExpr (CompareOp BitwiseExpr)?

@@ -49,24 +49,34 @@ word = do
   t <- takeWhileP (Just "alphanumeric character") isAlphaNum_
   pure $ BS.cons h t
 
-symbol :: ByteString -> Parser ()
-symbol = void . Lex.symbol skip
-
-symbool :: ByteString -> Parser Bool
-symbool s = True <$ Lex.symbol skip s <|> pure False
+symbol :: ByteString -> Parser Span
+symbol bs = do
+  p <- getOffset
+  void $ Lex.symbol skip bs
+  q <- getOffset
+  pure $ Span p q
 
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
 
+braces :: Parser a -> Parser a
+braces = between (symbol "{") (symbol "}")
+
 commaSep :: Parser a -> Parser [a]
 commaSep = flip sepEndBy (symbol ",")
 
-(<||>) :: Parser (f a) -> Parser (g a) -> Parser (Sum f g a)
-f <||> g = This <$> f <|> That <$> g
+(<+>) :: Parser (f a) -> Parser (g a) -> Parser (Sum f g a)
+f <+> g = This <$> f <|> That <$> g
 
 keyword :: ByteString -> Parser Span
 keyword str = try $ do
   (span, bs) <- lexeme word
   if bs == str
     then pure span
-    else fail $ unwords ["expected", BS8.unpack str, ", but got ", BS8.unpack bs]
+    else fail $ "expected " <> BS8.unpack str <> ", but got " <> BS8.unpack bs
+
+interspersed :: MonadPlus p => (a -> [(i, a)] -> r) -> p a -> p i -> p r
+interspersed comb pa pi = comb <$> pa <*> many ((,) <$> pi <*> pa)
+
+semicolon :: Parser Span
+semicolon = symbol ";"

@@ -3,9 +3,9 @@
 module Parsing where
 
 import Control.Applicative hiding (many)
+import Control.Applicative.Combinators.NonEmpty qualified as NE
 import Control.Monad
 import Data.ByteString (ByteString)
-import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as BS8
 import Data.Set qualified as S
 import Grammar
@@ -41,18 +41,18 @@ pContainerMembers =
     [ liftA2 CMTestDecl pTestDecl pContainerMembers
     , liftA2 CMTopLevelComptime pTopLevelComptime pContainerMembers
     , liftA3 CMTopLevelDecl (optional pKeywordPub) pTopLevelDecl pContainerMembers
-    , liftA2 CMContainerField pTodo (optional pContainerMembers)
+    , liftA2 CMContainerField pContainerField (optional pContainerMembers)
     ]
 
 -- TestDecl <- KEYWORD_test STRINGLITERALSINGLE Block
 
 pTestDecl :: Parser (TestDecl Span)
-pTestDecl = pTodo
+pTestDecl = fail "TestDecl"
 
 -- TopLevelComptime <- KEYWORD_comptime BlockExpr
 
 pTopLevelComptime :: Parser (TopLevelComptime Span)
-pTopLevelComptime = pTodo
+pTopLevelComptime = fail "TopLevelComptime"
 
 -- TopLevelDecl
 --     <- (KEYWORD_export / KEYWORD_extern STRINGLITERALSINGLE? / KEYWORD_inline)? FnProto (SEMICOLON / Block)
@@ -62,9 +62,9 @@ pTopLevelComptime = pTodo
 pTopLevelDecl :: Parser (TopLevelDecl Span)
 pTopLevelDecl =
   choice
-    [ liftA3 TLFnProto (optional pTlFnProtoQualifier) pFnProto (optional pTodo)
-    , liftA3 TLVarDecl (optional pTodo) (optional pTodo) pTodo
-    , liftA2 TLUsingNamespace pTodo pTodo
+    [ liftA3 TLFnProto (optional pTlFnProtoQualifier) pFnProto (Just <$> pBlock <|> Nothing <$ semicolon)
+    , liftA3 TLVarDecl (optional pTodo) (optional pKeywordThreadlocal) pVarDecl
+    , liftA2 TLUsingNamespace pKeywordUsingnamespace pExpr
     ]
  where
   -- TODO properly branch on intial keyword
@@ -84,28 +84,38 @@ pFnProto =
     <$> pKeywordFn
     <*> optional pIdentifier
     <*> parens pParamDeclList
-    <*> optional pTodo
-    <*> optional pTodo
-    <*> symbool "!"
-    <*> (pKeywordAnytype <||> pTypeExpr)
+    <*> optional (fail "byteAlign")
+    <*> optional (fail "linksection")
+    <*> optional (symbol "!")
+    <*> (pKeywordAnytype <+> pTypeExpr)
 
 -- VarDecl <- (KEYWORD_const / KEYWORD_var) IDENTIFIER (COLON TypeExpr)? ByteAlign? LinkSection? (EQUAL Expr)? SEMICOLON
---
+
+pVarDecl :: Parser (VarDecl Span)
+pVarDecl = fail "VarDecl"
+
 -- ContainerField <- KEYWORD_comptime? IDENTIFIER (COLON TypeExpr)? (EQUAL Expr)?
---
--- # *** Block Level ***
+
+pContainerField :: Parser (ContainerField Span)
+pContainerField = fail "ContainerField"
+
 -- Statement
---     <- KEYWORD_comptime? VarDecl
---      / KEYWORD_comptime BlockExprStatement
---      / KEYWORD_nosuspend BlockExprStatement
---      / KEYWORD_suspend (SEMICOLON / BlockExprStatement)
---      / KEYWORD_defer BlockExprStatement
---      / KEYWORD_errdefer BlockExprStatement
---      / IfStatement
---      / LabeledStatement
---      / SwitchExpr
---      / AssignExpr SEMICOLON
---
+
+pStatement :: Parser (Statement Span)
+pStatement =
+  choice
+    [ pTodo -- KEYWORD_comptime? VarDecl
+    , pTodo -- KEYWORD_comptime BlockExprStatement
+    , pTodo -- KEYWORD_nosuspend BlockExprStatement
+    , pTodo -- KEYWORD_suspend (SEMICOLON / BlockExprStatement)
+    , pTodo -- KEYWORD_defer BlockExprStatement
+    , pTodo -- KEYWORD_errdefer BlockExprStatement
+    , pTodo -- IfStatement
+    , pTodo -- LabeledStatement
+    , pTodo -- SwitchExpr
+    , StmtAssign <$> pAssignExpr -- AssignExpr SEMICOLON
+    ]
+
 -- IfStatement
 --     <- IfPrefix BlockExpr ( KEYWORD_else Payload? Statement )?
 --      / IfPrefix AssignExpr ( SEMICOLON / KEYWORD_else Payload? Statement )
@@ -127,45 +137,58 @@ pFnProto =
 --      / AssignExpr SEMICOLON
 --
 -- BlockExpr <- BlockLabel? Block
---
--- # *** Expression Level ***
--- AssignExpr <- Expr (AssignOp Expr)?
---
--- Expr <- KEYWORD_try* BoolOrExpr
---
--- BoolOrExpr <- BoolAndExpr (KEYWORD_or BoolAndExpr)*
---
--- BoolAndExpr <- CompareExpr (KEYWORD_and CompareExpr)*
---
--- CompareExpr <- BitwiseExpr (CompareOp BitwiseExpr)?
---
--- BitwiseExpr <- BitShiftExpr (BitwiseOp BitShiftExpr)*
---
--- BitShiftExpr <- AdditionExpr (BitShiftOp AdditionExpr)*
---
--- AdditionExpr <- MultiplyExpr (AdditionOp MultiplyExpr)*
---
--- MultiplyExpr <- PrefixExpr (MultiplyOp PrefixExpr)*
---
--- PrefixExpr <- PrefixOp* PrimaryExpr
---
--- PrimaryExpr
---     <- AsmExpr
---      / IfExpr
---      / KEYWORD_break BreakLabel? Expr?
---      / KEYWORD_comptime Expr
---      / KEYWORD_nosuspend Expr
---      / KEYWORD_continue BreakLabel?
---      / KEYWORD_resume Expr
---      / KEYWORD_return Expr?
---      / BlockLabel? LoopExpr
---      / Block
---      / CurlySuffixExpr
---
+
+pAssignExpr :: Parser (AssignExpr Span)
+pAssignExpr = AssignExpr <$> pExpr <*> (optional $ (,) <$> pAssignOp <*> pExpr)
+
+pExpr :: Parser (Expr Span)
+pExpr = Expr <$> many pKeywordTry <*> pBoolOrExpr
+
+pBoolOrExpr :: Parser (BoolOrExpr Span)
+pBoolOrExpr = BoolOrExpr <$> pBoolAndExpr `NE.sepBy1` pKeywordOr
+
+pBoolAndExpr :: Parser (BoolAndExpr Span)
+pBoolAndExpr = BoolAndExpr <$> pCompareExpr `NE.sepBy1` pKeywordAnd
+
+pCompareExpr :: Parser (CompareExpr Span)
+pCompareExpr = CompareExpr <$> pBitwiseExpr <*> optional ((,) <$> pCompareOp <*> pBitwiseExpr)
+
+pBitwiseExpr :: Parser (BitwiseExpr Span)
+pBitwiseExpr = interspersed BitwiseExpr pBitShiftExpr pBitwiseOp
+
+pBitShiftExpr :: Parser (BitShiftExpr Span)
+pBitShiftExpr = interspersed BitShiftExpr pAdditionExpr pBitShiftOp
+
+pAdditionExpr :: Parser (AdditionExpr Span)
+pAdditionExpr = interspersed AdditionExpr pMultiplyExpr pAdditionOp
+
+pMultiplyExpr :: Parser (MultiplyExpr Span)
+pMultiplyExpr = interspersed MultiplyExpr pPrefixExpr pMultiplyOp
+
+pPrefixExpr :: Parser (PrefixExpr Span)
+pPrefixExpr = PrefixExpr <$> many pPrefixOp <*> pPrimaryExpr
+
+pPrimaryExpr :: Parser (PrimaryExpr Span)
+pPrimaryExpr =
+  choice
+    [ pTodo -- AsmExpr
+    , pTodo -- IfExpr
+    , pTodo -- KEYWORD_break BreakLabel? Expr?
+    , pTodo -- KEYWORD_comptime Expr
+    , pTodo -- KEYWORD_nosuspend Expr
+    , pTodo -- KEYWORD_continue BreakLabel?
+    , pTodo -- KEYWORD_resume Expr
+    , pTodo -- KEYWORD_return Expr?
+    , pTodo -- BlockLabel? LoopExpr
+    , pTodo -- Block
+    , pTodo -- CurlySuffixExpr
+    ]
+
 -- IfExpr <- IfPrefix Expr (KEYWORD_else Payload? Expr)?
---
--- Block <- LBRACE Statement* RBRACE
---
+
+pBlock :: Parser (Block Span)
+pBlock = Block <$> (braces $ many pStatement)
+
 -- LoopExpr <- KEYWORD_inline? (ForExpr / WhileExpr)
 --
 -- ForExpr <- ForPrefix Expr (KEYWORD_else Expr)?
@@ -187,12 +210,25 @@ pTypeExpr = TypeExpr <$> many pPrefixTypeOp <*> pErrorUnionExpr
 -- ErrorUnionExpr <- SuffixExpr (EXCLAMATIONMARK TypeExpr)?
 
 pErrorUnionExpr :: Parser (ErrorUnionExpr Span)
-pErrorUnionExpr = pTodo
+pErrorUnionExpr = ErrorUnionExpr <$> pSuffixExpr <*> optional pTypeExpr
 
 -- SuffixExpr
 --     <- KEYWORD_async PrimaryTypeExpr SuffixOp* FnCallArguments
 --      / PrimaryTypeExpr (SuffixOp / FnCallArguments)*
---
+
+pSuffixExpr :: Parser (SuffixExpr Span)
+pSuffixExpr =
+  choice
+    [ SuffixAsync
+        <$> pKeywordAsync
+        <*> pPrimaryTypeExpr
+        <*> many pSuffixOp
+        <*> pFnCallArguments
+    , SuffixExpr
+        <$> pPrimaryTypeExpr
+        <*> many (pSuffixOp <+> pFnCallArguments)
+    ]
+
 -- PrimaryTypeExpr
 --     <- BUILTINIDENTIFIER FnCallArguments
 --      / CHAR_LITERAL
@@ -217,7 +253,35 @@ pErrorUnionExpr = pTodo
 --      / KEYWORD_unreachable
 --      / STRINGLITERAL
 --      / SwitchExpr
---
+
+pPrimaryTypeExpr :: Parser (PrimaryTypeExpr Span)
+pPrimaryTypeExpr =
+  choice
+    [ pTodo --  BUILTINIDENTIFIER FnCallArguments
+    , pTodo --  CHAR_LITERAL
+    , pTodo --  ContainerDecl
+    , pTodo -- PrimDotId <$> (symbol "." *> pIdentifier) --  DOT IDENTIFIER
+    , pTodo --  DOT InitList
+    , pTodo --  ErrorSetDecl
+    , pTodo --  FLOAT
+    , pTodo -- PrimFnProto <$> pFnProto --  FnProto
+    , pTodo --  GroupedExpr
+    , pTodo --  LabeledTypeExpr
+    , PrimId <$> pIdentifier --  IDENTIFIER
+    , pTodo --  IfTypeExpr
+    , pTodo --  INTEGER
+    , pTodo --  KEYWORD_comptime TypeExpr
+    , pTodo -- PrimErrId <$> pKeywordError <*> (symbol "." *> pIdentifier) --  KEYWORD_error DOT IDENTIFIER
+    , pTodo -- PrimFalse <$> pKeywordFalse --  KEYWORD_false
+    , pTodo -- PrimNull <$> pKeywordNull --  KEYWORD_null
+    , pTodo -- PrimAnyFrame <$> pKeywordAnyframe --  KEYWORD_anyframe
+    , pTodo -- PrimTrue <$> pKeywordTrue --  KEYWORD_true
+    , pTodo -- PrimUndefined <$> pKeywordUndefined --  KEYWORD_undefined
+    , pTodo -- PrimUnreachable <$> pKeywordUnreachable --  KEYWORD_unreachable
+    , pTodo --  STRINGLITERAL
+    , pTodo --  SwitchExpr
+    ]
+
 -- ContainerDecl <- (KEYWORD_extern / KEYWORD_packed)? ContainerDeclAuto
 --
 -- ErrorSetDecl <- KEYWORD_error LBRACE IdentifierList RBRACE
@@ -265,7 +329,7 @@ pErrorUnionExpr = pTodo
 -- ParamDecl <- (KEYWORD_noalias / KEYWORD_comptime)? (IDENTIFIER COLON)? ParamType
 
 pParamDecl :: Parser (ParamDecl Span)
-pParamDecl = pTodo
+pParamDecl = fail "ParamDecl"
 
 -- ParamType
 --     <- KEYWORD_anytype
@@ -312,49 +376,71 @@ pParamDecl = pTodo
 --      / PLUSPERCENTEQUAL
 --      / MINUSPERCENTEQUAL
 --      / EQUAL
---
--- CompareOp
---     <- EQUALEQUAL
---      / EXCLAMATIONMARKEQUAL
---      / LARROW
---      / RARROW
---      / LARROWEQUAL
---      / RARROWEQUAL
---
--- BitwiseOp
---     <- AMPERSAND
---      / CARET
---      / PIPE
---      / KEYWORD_orelse
---      / KEYWORD_catch Payload?
---
--- BitShiftOp
---     <- LARROW2
---      / RARROW2
---
--- AdditionOp
---     <- PLUS
---      / MINUS
---      / PLUS2
---      / PLUSPERCENT
---      / MINUSPERCENT
---
--- MultiplyOp
---     <- PIPE2
---      / ASTERISK
---      / SLASH
---      / PERCENT
---      / ASTERISK2
---      / ASTERISKPERCENT
---
--- PrefixOp
---     <- EXCLAMATIONMARK
---      / MINUS
---      / TILDE
---      / MINUSPERCENT
---      / AMPERSAND
---      / KEYWORD_try
---      / KEYWORD_await
+
+pAssignOp :: Parser (AssignOp Span)
+pAssignOp = fail "AssignOp"
+
+pCompareOp :: Parser (CompareOp Span)
+pCompareOp =
+  choice
+    [ CompareEqual <$> symbol "==" -- EQUALEQUAL
+    , CompareNotEqual <$> symbol "!=" -- EXCLAMATIONMARKEQUAL
+    , pTodo -- LARROW
+    , pTodo -- RARROW
+    , pTodo -- LARROWEQUAL
+    , pTodo -- RARROWEQUAL
+    ]
+
+pBitwiseOp :: Parser (BitwiseOp Span)
+pBitwiseOp =
+  choice
+    [ pTodo -- AMPERSAND
+    , pTodo --  CARET
+    , pTodo --  PIPE
+    , pTodo --  KEYWORD_orelse
+    , pTodo --  KEYWORD_catch Payload?
+    ]
+
+pBitShiftOp :: Parser (BitShiftOp Span)
+pBitShiftOp =
+  choice
+    [ BitShiftLarrow2 <$> symbol "<<"
+    , BitShiftRarrow2 <$> symbol ">>"
+    ]
+
+pAdditionOp :: Parser (AdditionOp Span)
+pAdditionOp =
+  choice
+    [ pTodo -- PLUS
+    , pTodo -- MINUS
+    , pTodo -- PLUS2
+    , pTodo -- PLUSPERCENT
+    , pTodo -- MINUSPERCENT
+    ]
+
+pMultiplyOp :: Parser (MultiplyOp Span)
+pMultiplyOp =
+  choice
+    [ pTodo -- PIPE2
+    , pTodo -- ASTERISK
+    , pTodo -- SLASH
+    , pTodo -- PERCENT
+    , pTodo -- ASTERISK2
+    , pTodo -- ASTERISKPERCENT
+    ]
+
+pPrefixOp :: Parser (PrefixOp Span)
+pPrefixOp =
+  choice
+    [ pTodo -- EXCLAMATIONMARK
+    , pTodo -- MINUS
+    , pTodo -- TILDE
+    , pTodo -- MINUSPERCENT
+    , pTodo -- AMPERSAND
+    , pTodo -- KEYWORD_try
+    , pTodo -- KEYWORD_await
+    ]
+
 --
 -- PrefixTypeOp
 --     <- QUESTIONMARK
@@ -363,16 +449,30 @@ pParamDecl = pTodo
 --      / PtrTypeStart (KEYWORD_align LPAREN Expr (COLON INTEGER COLON INTEGER)? RPAREN / KEYWORD_const / KEYWORD_volatile / KEYWORD_allowzero)*
 
 pPrefixTypeOp :: Parser (PrefixTypeOp Span)
-pPrefixTypeOp = pTodo
+pPrefixTypeOp =
+  choice
+    [ PrefixTypeQuestion <$> symbol "?"
+    , PrefixTypeAnyFrame <$> pKeywordAnyframe
+    , PrefixTypeArrayTypeStart <$> fail "PrefixTypeArrayTypeStart"
+    , PrefixTypePtrTypeStart <$> fail "PrefixTypePtrTypeStart"
+    ]
 
 -- SuffixOp
 --     <- LBRACKET Expr (DOT2 Expr?)? RBRACKET
 --      / DOT IDENTIFIER
 --      / DOTASTERISK
 --      / DOTQUESTIONMARK
---
+
+pSuffixOp :: Parser (SuffixOp Span)
+pSuffixOp =
+  choice
+    []
+
 -- FnCallArguments <- LPAREN ExprList RPAREN
---
+
+pFnCallArguments :: Parser (FnCallArguments Span)
+pFnCallArguments = fail "FnCallArguments"
+
 -- # Ptr specific
 -- ArrayTypeStart <- LBRACKET Expr? RBRACKET
 --
@@ -442,7 +542,7 @@ pParamDeclList = commaSep pParamDecl
 -- STRINGLITERALSINGLE <- "\"" string_char* "\"" skip
 
 pStringLiteralSingle :: Parser (StringLiteralSingle Span)
-pStringLiteralSingle = pTodo
+pStringLiteralSingle = fail "StringLiteralSingle"
 
 -- STRINGLITERAL
 --     <- STRINGLITERALSINGLE
