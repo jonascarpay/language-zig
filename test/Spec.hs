@@ -2,6 +2,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
+import Control.Monad
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as CS
@@ -9,6 +10,8 @@ import Grammar
 import NeatInterpolation
 import Parser
 import Parsing
+import System.Directory
+import System.FilePath
 import Test.Tasty
 import Test.Tasty.HUnit
 import Text.Megaparsec
@@ -45,8 +48,16 @@ testParser group p success failures =
   testSuccess = fmap (\(n, s) -> testCase n $ testParse p s) success
   testFailure = fmap (\(n, s) -> testCase n $ testParseFail p s) failures
 
+loadFixtures :: FilePath -> IO [(FilePath, ByteString)]
+loadFixtures root = do
+  files <- listDirectory root
+  forM files $ \fp -> do
+    bs <- BS.readFile (root </> fp)
+    pure (fp, bs)
+
 main :: IO ()
-main =
+main = do
+  fixtures <- loadFixtures "test/fixtures/"
   defaultMain $
     testGroup
       "tests"
@@ -99,34 +110,5 @@ main =
           , ("leading digit", "0token")
           , ("leading @", "@ident")
           ]
-      , testParser
-          "root"
-          pRoot
-          [
-            ( "hello world"
-            , [trimming|
-                pub fn main() void {
-                    print("heyyyyy", .{});
-                }
-              |]
-            )
-          ,
-            ( "compress.zig"
-            , [trimming|
-                // Copyright (c) 2015-2020 Zig Contributors
-                // ...
-                const std = @import("std.zig");
-
-                pub const deflate = @import("compress/deflate.zig");
-                pub const gzip = @import("compress/gzip.zig");
-                pub const zlib = @import("compress/zlib.zig");
-
-                test "" {
-                    _ = gzip;
-                    _ = zlib;
-                }
-              |]
-            )
-          ]
-          []
+      , testParser "whole file parsing" pRoot fixtures []
       ]

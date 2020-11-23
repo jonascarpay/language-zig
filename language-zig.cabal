@@ -59,6 +59,8 @@ test-suite language-zig-test
   build-depends:
     , bytestring
     , containers
+    , directory
+    , filepath
     , language-zig
     , megaparsec
     , neat-interpolation
