@@ -94,10 +94,10 @@ main =
           pIdentifier
           [ ("normal", "normal")
           , ("nonleading digits", "d1g1ts_")
-          , ("leading @", "@ident")
           ]
           [ ("keyword", "comptime")
           , ("leading digit", "0token")
+          , ("leading @", "@ident")
           ]
       , testParser
           "root"
@@ -107,6 +107,23 @@ main =
             , [trimming|
                 pub fn main() void {
                     print("heyyyyy", .{});
+                }
+              |]
+            )
+          ,
+            ( "compress.zig"
+            , [trimming|
+                // Copyright (c) 2015-2020 Zig Contributors
+                // ...
+                const std = @import("std.zig");
+
+                pub const deflate = @import("compress/deflate.zig");
+                pub const gzip = @import("compress/gzip.zig");
+                pub const zlib = @import("compress/zlib.zig");
+
+                test "" {
+                    _ = gzip;
+                    _ = zlib;
                 }
               |]
             )

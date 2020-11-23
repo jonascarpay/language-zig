@@ -7,4 +7,4 @@ package language-zig
 source-repository-package
     type: git
     location: https://github.com/jonascarpay/neat-interpolation.git
-    tag: 93c2f483b2f8e6696bbfc9d7d07c617bfb30b487
+    tag: 4522078c081c3488859b6c5894197c0231ba3d90

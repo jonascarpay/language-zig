@@ -36,7 +36,7 @@ data ContainerMembers a
 
 -- TestDecl <- KEYWORD_test STRINGLITERALSINGLE Block
 
-data TestDecl a = TestDecl (StringLiteralSingle a) (Block a)
+data TestDecl a = TestDecl (KeywordTest a) (StringLiteralSingle a) (Block a)
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- TopLevelComptime <- KEYWORD_comptime BlockExpr
@@ -906,7 +906,7 @@ data Identifier a
 
 -- BUILTINIDENTIFIER <- "@"[A-Za-z_][A-Za-z0-9_]* skip
 
-data BuiltinIdentifier a = BuiltinIdentifier a String
+data BuiltinIdentifier a = BuiltinIdentifier a ByteString
   deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- AMPERSAND            <- '&'      ![=]      skip

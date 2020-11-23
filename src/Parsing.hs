@@ -15,15 +15,8 @@ import Parser
 import Text.Megaparsec
 import Text.Megaparsec.Byte
 
-pIdentifier :: Parser (Identifier Span)
-pIdentifier = do
-  atId <- True <$ chunk "@" <|> pure False
-  (s, w) <- lexeme word
-  when (isKeyword w) $ fail' $ BS8.unpack w <> " is a keyword" -- TODO proper error
-  pure $ if atId then Identifier s w else AtIdentifier s w
-
 fail' :: String -> Parser a
-fail' str = failure Nothing $ S.singleton (Label $ NE.fromList str)
+fail' str = failure Nothing $ S.singleton (Label $ NE.fromList (str <> "(t)"))
 
 pTodo :: Parser a
 pTodo = fail' "todo"
@@ -54,7 +47,7 @@ pContainerMembers =
 -- TestDecl <- KEYWORD_test STRINGLITERALSINGLE Block
 
 pTestDecl :: Parser (TestDecl Span)
-pTestDecl = fail' "TestDecl"
+pTestDecl = TestDecl <$> pKeywordTest <*> pStringLiteralSingle <*> pBlock
 
 -- TopLevelComptime <- KEYWORD_comptime BlockExpr
 
@@ -99,7 +92,21 @@ pFnProto =
 -- VarDecl <- (KEYWORD_const / KEYWORD_var) IDENTIFIER (COLON TypeExpr)? ByteAlign? LinkSection? (EQUAL Expr)? SEMICOLON
 
 pVarDecl :: Parser (VarDecl Span)
-pVarDecl = fail' "VarDecl"
+pVarDecl =
+  VarDecl
+    <$> pVarDeclQualifier
+    <*> pIdentifier
+    <*> optional (symbol ":" *> pTypeExpr)
+    <*> optional pByteAlign
+    <*> optional pLinkSection
+    <*> optional (symbol "=" *> pExpr)
+    <* semicolon
+ where
+  pVarDeclQualifier =
+    choice
+      [ VarDeclConst <$> pKeywordConst
+      , VarDeclVar <$> pKeywordVar
+      ]
 
 -- ContainerField <- KEYWORD_comptime? IDENTIFIER (COLON TypeExpr)? (EQUAL Expr)?
 
@@ -244,7 +251,7 @@ pSuffixExpr =
 pPrimaryTypeExpr :: Parser (PrimaryTypeExpr Span)
 pPrimaryTypeExpr =
   choice
-    [ pTodo --  BUILTINIDENTIFIER FnCallArguments
+    [ PrimBuiltin <$> pBuiltinIdentifier <*> pFnCallArguments --  BUILTINIDENTIFIER FnCallArguments
     , pTodo --  CHAR_LITERAL
     , pTodo --  ContainerDecl
     , pTodo -- PrimDotId <$> (symbol "." *> pIdentifier) --  DOT IDENTIFIER
@@ -310,9 +317,10 @@ pPrimaryTypeExpr =
 -- FieldInit <- DOT IDENTIFIER EQUAL Expr
 --
 -- WhileContinueExpr <- COLON LPAREN AssignExpr RPAREN
---
--- LinkSection <- KEYWORD_linksection LPAREN Expr RPAREN
---
+
+pLinkSection :: Parser (LinkSection Span)
+pLinkSection = fail' "LinkSection" -- <- KEYWORD_linksection LPAREN Expr RPAREN
+
 -- ParamDecl <- (KEYWORD_noalias / KEYWORD_comptime)? (IDENTIFIER COLON)? ParamType
 
 pParamDecl :: Parser (ParamDecl Span)
@@ -365,7 +373,23 @@ pParamDecl = fail' "ParamDecl"
 --      / EQUAL
 
 pAssignOp :: Parser (AssignOp Span)
-pAssignOp = fail' "AssignOp"
+pAssignOp =
+  choice
+    [ pTodo -- ASTERISKEQUAL
+    , pTodo -- SLASHEQUAL
+    , pTodo -- PERCENTEQUAL
+    , pTodo -- PLUSEQUAL
+    , pTodo -- MINUSEQUAL
+    , pTodo -- LARROW2EQUAL
+    , pTodo -- RARROW2EQUAL
+    , pTodo -- AMPERSANDEQUAL
+    , pTodo -- CARETEQUAL
+    , pTodo -- PIPEEQUAL
+    , pTodo -- ASTERISKPERCENTEQUAL
+    , pTodo -- PLUSPERCENTEQUAL
+    , pTodo -- MINUSPERCENTEQUAL
+    , AssignEqual <$> symbol "=" -- EQUAL
+    ]
 
 pCompareOp :: Parser (CompareOp Span)
 pCompareOp =
@@ -472,10 +496,10 @@ pFnCallArguments = FnCallArguments <$> parens pExprList
 -- ContainerDeclType
 --     <- (KEYWORD_struct / KEYWORD_enum / KEYWORD_opaque) (LPAREN Expr RPAREN)?
 --      / KEYWORD_union (LPAREN (KEYWORD_enum (LPAREN Expr RPAREN)? / Expr) RPAREN)?
---
--- # Alignment
--- ByteAlign <- KEYWORD_align LPAREN Expr RPAREN
---
+
+pByteAlign :: Parser (ByteAlign Span)
+pByteAlign = fail' "ByteAlign" -- <- KEYWORD_align LPAREN Expr RPAREN
+
 -- # Lists
 -- IdentifierList <- (IDENTIFIER COMMA)* IDENTIFIER?
 --
@@ -531,11 +555,10 @@ pLineString = fail' "LineString"
 
 pStringLiteralSingle :: Parser (StringLiteralSingle Span)
 pStringLiteralSingle = do
-  p <- getOffset
-  char 34
-  str <- manyTill anySingle (char 34) -- TODO escapes etc.
-  q <- getOffset
-  pure $ StringLiteralSingle (Span p q) (BS.pack str)
+  (sp, str) <- lexeme $ do
+    _ <- char 34
+    manyTill anySingle (char 34) -- TODO escapes etc.
+  pure $ StringLiteralSingle sp (BS.pack str)
 
 -- replace `undefined` for escape sequence compatible thing
 -- pStringLiteralSingle = char '"' *> manyTill undefined (char '"')
@@ -550,9 +573,22 @@ pStringLiteral =
 -- IDENTIFIER
 --     <- !keyword [A-Za-z_] [A-Za-z0-9_]* skip
 --      / "@\"" string_char* "\""                            skip
+
+pIdentifier :: Parser (Identifier Span)
+pIdentifier =
+  choice
+    [ fail' "@\"identifier\""
+    , lexeme word >>= \(s, w) ->
+        if isKeyword w
+          then fail' $ BS8.unpack w <> " is a keyword"
+          else pure $ Identifier s w
+    ]
+
 -- BUILTINIDENTIFIER <- "@"[A-Za-z_][A-Za-z0-9_]* skip
---
---
+
+pBuiltinIdentifier :: Parser (BuiltinIdentifier Span)
+pBuiltinIdentifier = uncurry BuiltinIdentifier <$> lexeme (chunk "@" *> word)
+
 -- AMPERSAND            <- '&'      ![=]      skip
 -- AMPERSANDEQUAL       <- '&='               skip
 -- ASTERISK             <- '*'      ![*%=]    skip

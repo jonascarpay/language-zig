@@ -30,15 +30,14 @@ isUnderscore c = c == 95
 isAlpha_ c = isLower c || isUpper c || isUnderscore c
 isAlphaNum_ c = isLower c || isUpper c || isUnderscore c || isDigit c
 
+-- Yields a parser and the span it consumed, and consumes all whitespace after it.
 lexeme :: Parser a -> Parser (Span, a)
-lexeme = Lex.lexeme skip . withSpan
- where
-  withSpan :: Parser a -> Parser (Span, a)
-  withSpan p = do
-    l <- getOffset
-    a <- p
-    r <- getOffset
-    pure (Span l r, a)
+lexeme pa = do
+  p <- getOffset
+  a <- pa
+  q <- getOffset
+  skip
+  pure (Span p q, a)
 
 skip :: Parser ()
 skip = Lex.space space1 (Lex.skipLineComment "//") empty

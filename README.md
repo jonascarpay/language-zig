@@ -6,5 +6,6 @@ Haskell tools for Zig
 
 - [x] AST ADT
 - [ ] Parsing
+	- [ ] Builtins ADT
 - [ ] Printing
 - [ ] Compiling
