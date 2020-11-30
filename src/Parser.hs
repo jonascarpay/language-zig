@@ -79,3 +79,6 @@ interspersed comb pa pi = comb <$> pa <*> many ((,) <$> pi <*> pa)
 
 semicolon :: Parser Span
 semicolon = symbol ";"
+
+intlit :: Parser (Span, Integer)
+intlit = lexeme Lex.decimal -- TODO bin, oct, hex

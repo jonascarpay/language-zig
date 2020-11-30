@@ -28,9 +28,8 @@ library
   import:          common-options
   hs-source-dirs:  src
   exposed-modules:
-    Grammar
-    Parser
-    Parsing
+    AST
+    Syntax
 
   build-depends:
     , bytestring
@@ -38,8 +37,10 @@ library
     , megaparsec
     , mtl
     , parser-combinators
+    , pretty-simple
     , prettyprinter
 
+-- TODO remove pretty-simple
 executable language-zig-exe
   import:         common-options
   hs-source-dirs: app
@@ -63,7 +64,6 @@ test-suite language-zig-test
     , filepath
     , language-zig
     , megaparsec
-    , neat-interpolation
     , parser-combinators
     , tasty
     , tasty-hunit

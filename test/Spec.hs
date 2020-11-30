@@ -8,8 +8,7 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as CS
 import Grammar
 import NeatInterpolation
-import Parser
-import Parsing
+import Syntax
 import System.Directory
 import System.FilePath
 import Test.Tasty
@@ -101,6 +100,14 @@ main = do
           , ("leading @", "@word")
           ]
       , testParser
+          "colon"
+          (pIdentifier <* symbol ":" <* eof)
+          [ ("with colon", "word:")
+          , ("trailing space", "word:   ")
+          , ("interspaced", "word   :   ")
+          ]
+          []
+      , testParser
           "identifier"
           pIdentifier
           [ ("normal", "normal")
@@ -110,5 +117,5 @@ main = do
           , ("leading digit", "0token")
           , ("leading @", "@ident")
           ]
-      , testParser "whole file parsing" pRoot fixtures []
+      , testParser "whole file parsing" pZig fixtures []
       ]

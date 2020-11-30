@@ -118,7 +118,7 @@ pContainerField = fail' "ContainerField"
 pStatement :: Parser (Statement Span)
 pStatement =
   choice
-    [ pTodo -- KEYWORD_comptime? VarDecl
+    [ StmtDecl <$> optional pKeywordComptime <*> pVarDecl -- KEYWORD_comptime? VarDecl
     , pTodo -- KEYWORD_comptime BlockExprStatement
     , pTodo -- KEYWORD_nosuspend BlockExprStatement
     , pTodo -- KEYWORD_suspend (SEMICOLON / BlockExprStatement)
@@ -192,7 +192,7 @@ pPrimaryExpr =
     , pTodo -- KEYWORD_nosuspend Expr
     , pTodo -- KEYWORD_continue BreakLabel?
     , pTodo -- KEYWORD_resume Expr
-    , pTodo -- KEYWORD_return Expr?
+    , PrimReturn <$> pKeywordReturn <*> optional pExpr -- KEYWORD_return Expr?
     , pTodo -- BlockLabel? LoopExpr
     , pTodo -- Block
     , PrimCurlySuffixExpr <$> pCurlySuffixExpr -- CurlySuffixExpr
@@ -263,7 +263,7 @@ pPrimaryTypeExpr =
     , pTodo --  LabeledTypeExpr
     , PrimId <$> pIdentifier --  IDENTIFIER
     , pTodo --  IfTypeExpr
-    , pTodo --  INTEGER
+    , PrimInt <$> pIntLit --  INTEGER
     , pTodo --  KEYWORD_comptime TypeExpr
     , pTodo -- PrimErrId <$> pKeywordError <*> (symbol "." *> pIdentifier) --  KEYWORD_error DOT IDENTIFIER
     , pTodo -- PrimFalse <$> pKeywordFalse --  KEYWORD_false
@@ -433,7 +433,7 @@ pMultiplyOp :: Parser (MultiplyOp Span)
 pMultiplyOp =
   choice
     [ pTodo -- PIPE2
-    , pTodo -- ASTERISK
+    , MultiplyAsterisk <$> symbol "*"
     , pTodo -- SLASH
     , pTodo -- PERCENT
     , pTodo -- ASTERISK2
@@ -551,6 +551,9 @@ pLineString = fail' "LineString"
 --      / "0o" [0-7]+ skip
 --      / "0x" hex+   skip
 --      /      [0-9]+ skip
+pIntLit :: Parser (IntLit Span)
+pIntLit = uncurry IntLit <$> intlit
+
 -- STRINGLITERALSINGLE <- "\"" string_char* "\"" skip
 
 pStringLiteralSingle :: Parser (StringLiteralSingle Span)
