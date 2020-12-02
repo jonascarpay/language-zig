@@ -39,12 +39,7 @@ newtype Alignment = Alignment Expression
 newtype Linking = Linking Expression
   deriving (Eq, Show, Typeable, Generic)
 
-data ReturnType = AnyType | TypeExpression TypeExpression
-  deriving (Eq, Show, Typeable, Generic)
-
-data TypeExpression
-  = Nullable TypeExpression
-  | TypeVariable Identifier
+data ReturnType = AnyType | TypeExpression Expression
   deriving (Eq, Show, Typeable, Generic)
 
 data Function
@@ -64,9 +59,16 @@ data Expression
   | And Expression Expression
   | Ret (Maybe Expression)
   | Try Expression
+  | CurlySuffix Expression InitList
+  | Questionmark Expression
+  | ErrorUnion Expression Expression
+  | IdentifierExpr Identifier
   deriving (Eq, Show, Typeable, Generic)
 
 data Constness = Var | Const
+  deriving (Eq, Show, Typeable, Generic)
+
+data InitList
   deriving (Eq, Show, Typeable, Generic)
 
 data Declaration
@@ -74,7 +76,7 @@ data Declaration
       CompileTime
       Constness
       (Maybe Identifier)
-      (Maybe TypeExpression)
+      (Maybe Expression)
       (Maybe Alignment)
       (Maybe Linking)
       (Maybe Expression)
@@ -82,4 +84,9 @@ data Declaration
 
 data Statement
   = DeclarationStatement Declaration
+  | AssignmentStatement Expression AssignOp Expression -- var = value
+  | ExpressionStatement Expression -- value
+  deriving (Eq, Show, Typeable, Generic)
+
+data AssignOp
   deriving (Eq, Show, Typeable, Generic)

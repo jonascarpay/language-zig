@@ -7,7 +7,6 @@ import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as CS
 import Grammar
-import NeatInterpolation
 import Syntax
 import System.Directory
 import System.FilePath

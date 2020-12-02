@@ -19,6 +19,8 @@ import Text.Megaparsec.Byte.Lexer qualified as Lex
 
 type Parser = Parsec Void ByteString
 
+-- TODO Inline everything that's not used more than once
+
 pZig :: Parser Zig
 pZig = skip *> (Zig <$> pTopLevel) <* eof
 
@@ -84,14 +86,96 @@ pLinking = todo "Linking"
 pReturnType :: Parser ReturnType
 pReturnType = (TypeExpression <$> pTypeExpr) <|> (AnyType <$ lookAhead (keyword "anytype"))
 
-pTypeExpr :: Parser TypeExpression
-pTypeExpr = TypeVariable <$> pIdentifier
+pTypeExpr :: Parser Expression
+pTypeExpr = do
+  prefixes <- many pPrefixTypeOp
+  expr <- pErrorUnionExpr
+  pure $ foldr (.) id prefixes expr
+
+pPrefixTypeOp :: Parser (Expression -> Expression)
+pPrefixTypeOp =
+  choice
+    [ Questionmark <$ questionmark
+    , todo "AnyFrame"
+    , todo "ArrayTypeStart"
+    , todo "PtrTypeStart"
+    ]
+
+pErrorUnionExpr :: Parser Expression
+pErrorUnionExpr = do
+  suffix <- pSuffixExpr
+  mtail <- optional (exclamation *> pTypeExpr)
+  pure $ case mtail of
+    Nothing -> suffix
+    Just err -> ErrorUnion suffix err
+
+pSuffixExpr :: Parser Expression
+pSuffixExpr = pAsync <|> pNonAsync
+ where
+  pAsync :: Parser Expression
+  pAsync = todo "async"
+  pNonAsync :: Parser Expression
+  pNonAsync = do
+    prim <- pPrimaryTypeExpr
+    _ <- many (todo "suffix")
+    pure prim
+
+pPrimaryTypeExpr :: Parser Expression
+pPrimaryTypeExpr =
+  choice
+    [ todo "PrimBuiltin" -- PrimBuiltin (BuiltinIdentifier a) (FnCallArguments a)
+    , todo "PrimCharLiteral" -- PrimCharLiteral (CharLiteral a)
+    , todo "PrimContainer" -- PrimContainer (ContainerDecl a)
+    , todo "PrimDotId" -- PrimDotId (Identifier a)
+    , todo "PrimInitList" -- PrimInitList (InitList a)
+    , todo "PrimErrorSet" -- PrimErrorSet (ErrorSetDecl a)
+    , todo "PrimFloat" -- PrimFloat (FloatLit a)
+    , todo "PrimFnProto" -- PrimFnProto (FnProto a)
+    , todo "PrimGrouped" -- PrimGrouped (GroupedExpr a)
+    , todo "PrimLabeledType" -- PrimLabeledType (LabeledTypeExpr a)
+    , IdentifierExpr <$> pIdentifier -- PrimId (Identifier a)
+    , todo "PrimIfType" -- PrimIfType (IfTypeExpr a)
+    , Int <$> pIntLit -- PrimInt (IntLit a)
+    , todo "PrimType" -- PrimType (KeywordComptime a) (TypeExpr a)
+    , todo "PrimErrId" -- PrimErrId (KeywordError a) (Identifier a)
+    , todo "PrimFalse" -- PrimFalse (KeywordFalse a)
+    , todo "PrimNull" -- PrimNull (KeywordNull a)
+    , todo "PrimAnyFrame" -- PrimAnyFrame (KeywordAnyframe a)
+    , todo "PrimTrue" -- PrimTrue (KeywordTrue a)
+    , todo "PrimUndefined" -- PrimUndefined (KeywordUndefined a)
+    , todo "PrimUnreachable" -- PrimUnreachable (KeywordUnreachable a)
+    , todo "PrimString" -- PrimString (StringLit a)
+    , todo "PrimSwitch" -- PrimSwitch (SwitchExpr a)
+    ]
+
+pIntLit :: Parser Integer
+pIntLit = lexeme Lex.decimal
 
 pBlock :: Parser [Statement]
 pBlock = braces (many pStatement)
 
 pStatement :: Parser Statement
-pStatement = DeclarationStatement <$> pDeclaration
+pStatement =
+  choice
+    [ DeclarationStatement <$> pDeclaration
+    , todo "StmtComptime" -- StmtComptime (KeywordComptime a) (BlockExprStatement a)
+    , todo "StmtNoSuspend" -- StmtNoSuspend (KeywordNoSuspend a) (BlockExprStatement a)
+    , todo "StmtSuspend" -- StmtSuspend (KeywordSuspend a) (Maybe (BlockExprStatement a))
+    , todo "StmtDefer" -- StmtDefer (KeywordDefer a) (BlockExprStatement a)
+    , todo "StmtErrDefer" -- StmtErrDefer (KeywordErrdefer a) (BlockExprStatement a)
+    , todo "StmtIf" -- StmtIf (IfStatement a)
+    , todo "StmtLabeled" -- StmtLabeled (LabeledStatement a)
+    , todo "StmtSwitch" -- StmtSwitch (SwitchExpr a)
+    , pAssignExpr <* semicolon
+    ]
+ where
+  pAssignExpr :: Parser Statement
+  pAssignExpr = do
+    lead <- pExpr
+    mtail <- optional (todo "AssignOp Expr")
+    pure $ case mtail of
+      Nothing -> ExpressionStatement lead
+      Just (op, val) -> AssignmentStatement lead op val
 
 pDeclaration :: Parser Declaration
 pDeclaration =
@@ -102,10 +186,11 @@ pDeclaration =
     <*> optional (colon *> pTypeExpr)
     <*> optional pAlignment
     <*> optional pLinking
-    <*> optional (equals *> pExpression)
+    <*> optional (equals *> pExpr) -- TODO not actually optional?
+    <* semicolon
 
-pExpression :: Parser Expression
-pExpression = do
+pExpr :: Parser Expression
+pExpr = do
   fs <- many (Try <$ keyword "try")
   a <- pBoolOrExpr
   pure $ foldr ($) a fs
@@ -171,14 +256,22 @@ pPrimaryExpr =
     , todo "nosuspend" -- KEYWORD_nosuspend Expr
     , todo "continue" -- KEYWORD_continue BreakLabel?
     , todo "resume" -- KEYWORD_resume Expr
-    , Ret <$> (keyword "return" *> optional pExpression) -- KEYWORD_return Expr?
+    , Ret <$> (keyword "return" *> optional pExpr) -- KEYWORD_return Expr?
     , todo "block label" -- BlockLabel? LoopExpr
     , todo "block" -- Block
     , pCurlySuffixExpr -- CurlySuffixExpr
     ]
 
 pCurlySuffixExpr :: Parser Expression
-pCurlySuffixExpr = todo "curly"
+pCurlySuffixExpr = do
+  expr <- pTypeExpr
+  mInitList <- optional pInitList
+  pure $ case mInitList of
+    Nothing -> expr
+    Just initList -> CurlySuffix expr initList
+
+pInitList :: Parser InitList
+pInitList = todo "InitList"
 
 ----- Utils
 
@@ -208,7 +301,6 @@ keyword str = do
       failure
         (Just . Label $ '"' :| (BS8.unpack next <> "\""))
         (S.singleton . Label $ '"' :| (BS8.unpack str <> "\""))
--- $ "expected " <> BS8.unpack str <> ", but got " <> BS8.unpack next
 
 todo :: String -> Parser a
 todo str = failure Nothing $ S.singleton (Label $ NE.fromList (str <> "(t)"))
@@ -225,7 +317,7 @@ interspersed ma mf = do
   ias <- many $ (,) <$> mf <*> ma
   pure $ foldr (\(f, a') a -> f a a') a0 ias
 
-comma, colon, semicolon, lbrace, rbrace, lparen, rparen, equals :: Parser ()
+comma, colon, semicolon, lbrace, rbrace, lparen, rparen, equals, asterisk, questionmark, exclamation :: Parser ()
 comma = symbol ","
 colon = symbol ":"
 semicolon = symbol ";"
@@ -235,6 +327,8 @@ lparen = symbol "("
 rparen = symbol ")"
 equals = symbol "="
 asterisk = symbol "*"
+questionmark = symbol "?"
+exclamation = symbol "!"
 
 parens :: Parser a -> Parser a
 parens = between lparen rparen
