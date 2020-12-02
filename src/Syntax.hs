@@ -21,26 +21,29 @@ type Parser = Parsec Void ByteString
 
 -- TODO Inline everything that's not used more than once
 
-pZig :: Parser Zig
-pZig = skip *> (Zig <$> pTopLevel) <* eof
+pZig :: Parser StructDef
+pZig = do
+  skip
+  members <- pContainerMembers <* eof
+  either (fmap absurd) pure $ mkStructDef Nothing Nothing members
 
-pTopLevel :: Parser [TopLevel]
-pTopLevel =
+pContainerMembers :: Parser [ContainerMember]
+pContainerMembers =
   choice
-    [ (:) <$> pTestDecl <*> pTopLevel
-    , (:) <$> pBlockExpr <*> pTopLevel
-    , (:) <$> pTlFunction <*> pTopLevel
-    , (:) <$> pContainerField <*> (comma *> pTopLevel)
+    [ (:) <$> pTestDecl <*> pContainerMembers
+    , (:) <$> pBlockExpr <*> pContainerMembers
+    , (:) <$> pTlFunction <*> pContainerMembers
+    , (:) <$> pContainerField <*> (comma *> pContainerMembers)
     , pure <$> pContainerField
     , pure []
     ]
  where
   pTlFunction = TlFunction <$> pVisibility <*> pFunction
-  pBlockExpr :: Parser TopLevel
+  pBlockExpr :: Parser ContainerMember
   pBlockExpr = todo "BlockExpr"
-  pTestDecl :: Parser TopLevel
+  pTestDecl :: Parser ContainerMember
   pTestDecl = todo "TestDecl"
-  pContainerField :: Parser TopLevel
+  pContainerField :: Parser ContainerMember
   pContainerField = todo "ContainerField"
 
 pVisibility :: Parser Visibility
@@ -56,10 +59,10 @@ pIdentifier :: Parser Identifier
 pIdentifier =
   choice
     [ todo "@\"identifier\""
-    , lexeme word >>= \w ->
+    , wordSuchThat $ \w ->
         if isKeyword w
-          then fail $ BS8.unpack w <> " is a keyword"
-          else pure $ Identifier w
+          then Left $ unexpected $ Label $ 'k' :| ("eyword \"" <> BS8.unpack w <> "\"")
+          else Right $ Identifier w
     ]
 
 pFunction :: Parser Function
@@ -84,7 +87,7 @@ pLinking :: Parser Linking
 pLinking = todo "Linking"
 
 pReturnType :: Parser ReturnType
-pReturnType = (TypeExpression <$> pTypeExpr) <|> (AnyType <$ lookAhead (keyword "anytype"))
+pReturnType = (TypeExpression <$> pTypeExpr) <|> (AnyType <$ keyword "anytype")
 
 pTypeExpr :: Parser Expression
 pTypeExpr = do
@@ -125,7 +128,7 @@ pPrimaryTypeExpr =
   choice
     [ todo "PrimBuiltin" -- PrimBuiltin (BuiltinIdentifier a) (FnCallArguments a)
     , todo "PrimCharLiteral" -- PrimCharLiteral (CharLiteral a)
-    , todo "PrimContainer" -- PrimContainer (ContainerDecl a)
+    , pContainerDecl -- PrimContainer (ContainerDecl a)
     , todo "PrimDotId" -- PrimDotId (Identifier a)
     , todo "PrimInitList" -- PrimInitList (InitList a)
     , todo "PrimErrorSet" -- PrimErrorSet (ErrorSetDecl a)
@@ -147,6 +150,29 @@ pPrimaryTypeExpr =
     , todo "PrimString" -- PrimString (StringLit a)
     , todo "PrimSwitch" -- PrimSwitch (SwitchExpr a)
     ]
+ where
+  pContainerDecl :: Parser Expression
+  pContainerDecl = do
+    q <- optional (todo "Container Qualifier")
+    t <- pContainerDeclType
+    ms <- braces pContainerMembers
+    either (fmap absurd) pure $ mkContainer q t ms
+  pContainerDeclType :: Parser ContainerType
+  pContainerDeclType =
+    choice
+      [ keyword "struct" *> (Struct <$> optional (parens pExpr))
+      , todo "ContEnum" -- ContEnum (KeywordEnum a) (Maybe (Expr a))
+      , todo "ContOpaque" -- ContOpaque (KeywordOpaque a) (Maybe (Expr a))
+      , todo "ContEmptyUnion" -- ContEmptyUnion (KeywordUnion a)
+      , todo "ContEnumUnion" -- ContEnumUnion (KeywordUnion a) (KeywordEnum a) (Maybe (Expr a))
+      , todo "ContUnion" -- ContUnion (KeywordUnion a) (Expr a)
+      ]
+  mkContainer :: Maybe ContainerQualifier -> ContainerType -> [ContainerMember] -> Either (Parser Void) Expression
+  mkContainer q (Struct expr) mems = StructDefExpr <$> mkStructDef q expr mems
+  mkContainer _ _ _ = Left $ fail "invalid container definition"
+
+mkStructDef :: Maybe ContainerQualifier -> Maybe Expression -> [ContainerMember] -> Either (Parser Void) StructDef
+mkStructDef q Nothing ms = pure $ StructDef q
 
 pIntLit :: Parser Integer
 pIntLit = lexeme Lex.decimal
@@ -284,6 +310,22 @@ word = do
   t <- takeWhileP (Just "alphanumeric character") isAlphaNum_
   pure $ BS.cons h t
 
+wordSuchThat :: (ByteString -> Either (Parser Void) a) -> Parser a
+wordSuchThat f = do
+  w <- lookAhead word
+  case f w of
+    Right a -> a <$ lexeme (chunk w)
+    Left err -> (absurd <$> err)
+
+-- Does not work for some reason
+-- wordSuchThat :: (ByteString -> Either (Parser Void) a) -> Parser a
+-- wordSuchThat f = do
+--   pre <- getOffset
+--   w <- lexeme word
+--   case f w of
+--     Right a -> a <$ skip
+--     Left err -> setOffset pre >> (absurd <$> err)
+
 isLower, isUpper, isUnderscore, isDigit, isAlpha_, isAlphaNum_ :: Word8 -> Bool
 isLower c = c >= 97 && c <= 122
 isUpper c = c >= 65 && c <= 90
@@ -293,14 +335,14 @@ isAlpha_ c = isLower c || isUpper c || isUnderscore c
 isAlphaNum_ c = isLower c || isUpper c || isUnderscore c || isDigit c
 
 keyword :: ByteString -> Parser ()
-keyword str = do
-  next <- lookAhead $ word -- TODO only parse once
-  if next == str
-    then lexeme (symbol next)
+keyword str = wordSuchThat $ \w ->
+  if str == w
+    then pure ()
     else
-      failure
-        (Just . Label $ '"' :| (BS8.unpack next <> "\""))
-        (S.singleton . Label $ '"' :| (BS8.unpack str <> "\""))
+      Left $
+        failure
+          (Just . Label $ '"' :| (BS8.unpack w <> "\""))
+          (S.singleton . Label $ '"' :| (BS8.unpack str <> "\""))
 
 todo :: String -> Parser a
 todo str = failure Nothing $ S.singleton (Label $ NE.fromList (str <> "(t)"))

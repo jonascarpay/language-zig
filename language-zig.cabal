@@ -30,6 +30,7 @@ library
   exposed-modules:
     AST
     Syntax
+    Util
 
   build-depends:
     , bytestring

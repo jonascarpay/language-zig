@@ -9,7 +9,7 @@ import GHC.Generics
 
 -- Some day: pAST :: Parser AST
 
-data Zig = Zig [TopLevel]
+data Zig = Zig [ContainerMember]
   deriving (Eq, Show, Typeable, Generic)
 
 data Identifier = Identifier ByteString
@@ -18,7 +18,7 @@ data Identifier = Identifier ByteString
 data ParamDecl
   deriving (Eq, Show, Typeable, Generic)
 
-data TopLevel
+data ContainerMember
   = TlFunction Visibility Function
   --- | TlVar Visibility Declaration
   --- | TlUsingNamespace Visibility
@@ -63,6 +63,19 @@ data Expression
   | Questionmark Expression
   | ErrorUnion Expression Expression
   | IdentifierExpr Identifier
+  | StructDefExpr StructDef
+  deriving (Eq, Show, Typeable, Generic)
+
+data StructDef = StructDef
+  { sdQualifier :: Maybe ContainerQualifier
+  }
+  deriving (Eq, Show, Typeable, Generic)
+
+data ContainerQualifier = Extern | Packed
+  deriving (Eq, Show, Typeable, Generic)
+
+data ContainerType
+  = Struct (Maybe Expression)
   deriving (Eq, Show, Typeable, Generic)
 
 data Constness = Var | Const
