@@ -4,8 +4,8 @@ version:         0
 license:         BSD-3-Clause
 build-type:      Simple
 extra-doc-files:
-  README.md
   CHANGELOG.md
+  README.md
 
 license-file:    LICENSE
 author:          Jonas Carpay
@@ -29,6 +29,7 @@ library
   hs-source-dirs:  src
   exposed-modules:
     AST
+    Eval
     Syntax
     Util
 

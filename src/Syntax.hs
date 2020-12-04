@@ -10,6 +10,7 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as BS8
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
+import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.Void
 import Data.Word
@@ -25,7 +26,7 @@ pZig :: Parser StructDef
 pZig = do
   skip
   members <- pContainerMembers <* eof
-  either (fmap absurd) pure $ mkStructDef Nothing Nothing members
+  mkStructDef Nothing Nothing members
 
 pContainerMembers :: Parser [ContainerMember]
 pContainerMembers =
@@ -153,7 +154,7 @@ pPrimaryTypeExpr =
     q <- optional (todo "Container Qualifier")
     t <- pContainerDeclType
     ms <- braces pContainerMembers
-    either (fmap absurd) pure $ mkContainer q t ms
+    mkContainer q t ms
   pContainerDeclType :: Parser ContainerType
   pContainerDeclType =
     choice
@@ -164,12 +165,21 @@ pPrimaryTypeExpr =
       , todo "ContEnumUnion" -- ContEnumUnion (KeywordUnion a) (KeywordEnum a) (Maybe (Expr a))
       , todo "ContUnion" -- ContUnion (KeywordUnion a) (Expr a)
       ]
-  mkContainer :: Maybe ContainerQualifier -> ContainerType -> [ContainerMember] -> Either (Parser Void) Expression
+  mkContainer :: Maybe ContainerQualifier -> ContainerType -> [ContainerMember] -> Parser Expression
   mkContainer q (Struct expr) mems = StructDefExpr <$> mkStructDef q expr mems
-  mkContainer _ _ _ = Left $ fail "invalid container definition"
+  mkContainer _ _ _ = fail "invalid container definition"
 
-mkStructDef :: Maybe ContainerQualifier -> Maybe Expression -> [ContainerMember] -> Either (Parser Void) StructDef
-mkStructDef q Nothing ms = pure $ StructDef q
+mkStructDef :: Maybe ContainerQualifier -> Maybe Expression -> [ContainerMember] -> Parser StructDef
+mkStructDef Nothing Nothing ms = do
+  let go fns (TlFunction vis fn : t) = go (M.insert (fnId fn) (vis, fn) fns) t
+      go fns [] = pure fns
+  fns <- go mempty ms
+  pure $
+    StructDef
+      { sdField = mempty
+      , sdFunction = fns
+      }
+mkStructDef _ _ _ = fail "invalid container"
 
 pIntLit :: Parser Integer
 pIntLit = lexeme Lex.decimal
