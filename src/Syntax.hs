@@ -310,29 +310,20 @@ word = do
   t <- takeWhileP (Just "alphanumeric character") isAlphaNum_
   pure $ BS.cons h t
 
+{-# INLINE pSuchThat #-}
+pSuchThat :: MonadParsec e s m => m a -> (a -> Either (m Void) b) -> m b
+pSuchThat m f = do
+  (n, a) <- lookAhead $ do
+    p <- getOffset
+    a <- m
+    q <- getOffset
+    pure (q - p, a)
+  case f a of
+    Left err -> absurd <$> err
+    Right b -> b <$ takeP Nothing n
+
 wordSuchThat :: (ByteString -> Either (Parser Void) a) -> Parser a
-wordSuchThat f = do
-  w <- lookAhead word
-  case f w of
-    Right a -> a <$ lexeme (chunk w)
-    Left err -> (absurd <$> err)
-
--- Does not work for some reason
--- wordSuchThat :: (ByteString -> Either (Parser Void) a) -> Parser a
--- wordSuchThat f = do
---   pre <- getOffset
---   w <- lexeme word
---   case f w of
---     Right a -> a <$ skip
---     Left err -> setOffset pre >> (absurd <$> err)
-
-isLower, isUpper, isUnderscore, isDigit, isAlpha_, isAlphaNum_ :: Word8 -> Bool
-isLower c = c >= 97 && c <= 122
-isUpper c = c >= 65 && c <= 90
-isDigit c = c >= 48 && c <= 57
-isUnderscore c = c == 95
-isAlpha_ c = isLower c || isUpper c || isUnderscore c
-isAlphaNum_ c = isLower c || isUpper c || isUnderscore c || isDigit c
+wordSuchThat = pSuchThat (lexeme word)
 
 keyword :: ByteString -> Parser ()
 keyword str = wordSuchThat $ \w ->
@@ -341,8 +332,26 @@ keyword str = wordSuchThat $ \w ->
     else
       Left $
         failure
-          (Just . Label $ '"' :| (BS8.unpack w <> "\""))
-          (S.singleton . Label $ '"' :| (BS8.unpack str <> "\""))
+          (Just . Label . toNE $ BS8.unpack w)
+          (S.singleton . Label . toNE $ BS8.unpack str)
+
+toNE :: [a] -> NonEmpty a
+toNE (a : as) = a :| as
+toNE _ = error "naughty"
+
+pNakedIdentifier :: Parser ByteString
+pNakedIdentifier = wordSuchThat $ \w ->
+  if isKeyword w
+    then Left $ unexpected $ Label $ toNE $ "keyword \"" <> BS8.unpack w <> "\""
+    else Right w
+
+isLower, isUpper, isUnderscore, isDigit, isAlpha_, isAlphaNum_ :: Word8 -> Bool
+isLower c = c >= 97 && c <= 122
+isUpper c = c >= 65 && c <= 90
+isDigit c = c >= 48 && c <= 57
+isUnderscore c = c == 95
+isAlpha_ c = isLower c || isUpper c || isUnderscore c
+isAlphaNum_ c = isLower c || isUpper c || isUnderscore c || isDigit c
 
 todo :: String -> Parser a
 todo str = failure Nothing $ S.singleton (Label $ NE.fromList (str <> "(t)"))
