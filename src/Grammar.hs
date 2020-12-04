@@ -12,11 +12,9 @@ import Data.Typeable (Typeable)
 import GHC.Generics
 
 data Sum f g a = This (f a) | That (g a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- Root <- skip ContainerMembers eof
 data Root a = Root (ContainerMembers a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- ContainerMembers
 --     <- TestDecl ContainerMembers
@@ -32,17 +30,14 @@ data ContainerMembers a
   | CMTopLevelDecl (Maybe (KeywordPub a)) (TopLevelDecl a) (ContainerMembers a)
   | CMContainerField (ContainerField a) (Maybe (ContainerMembers a))
   | CMContainerEmpty
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- TestDecl <- KEYWORD_test STRINGLITERALSINGLE Block
 
 data TestDecl a = TestDecl (KeywordTest a) (StringLiteralSingle a) (Block a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- TopLevelComptime <- KEYWORD_comptime BlockExpr
 
 data TopLevelComptime a = TopLevelComptime (BlockExpr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- TopLevelDecl
 --     <- (KEYWORD_export / KEYWORD_extern STRINGLITERALSINGLE? / KEYWORD_inline)? FnProto (SEMICOLON / Block)
@@ -53,18 +48,15 @@ data TopLevelDecl a
   = TLFnProto (Maybe (TLFnProtoQualifier a)) (FnProto a) (Maybe (Block a))
   | TLVarDecl (Maybe (TLVarDeclQualifier a)) (Maybe (KeywordThreadlocal a)) (VarDecl a)
   | TLUsingNamespace (KeywordUsingnamespace a) (Expr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 data TLFnProtoQualifier a
   = FnProtoExport (KeywordExport a)
   | FnProtoExtern (KeywordExtern a) (Maybe (StringLiteralSingle a))
   | FnProtoInline (KeywordInline a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 data TLVarDeclQualifier a
   = VarExport (KeywordExport a)
   | VarExtern (KeywordExtern a) (Maybe (StringLiteralSingle a))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- FnProto <- KEYWORD_fn IDENTIFIER? LPAREN ParamDeclList RPAREN ByteAlign? LinkSection? EXCLAMATIONMARK? (KEYWORD_anytype / TypeExpr)
 
@@ -77,7 +69,6 @@ data FnProto a
       (Maybe (LinkSection a))
       (Maybe a)
       (Sum KeywordAnytype TypeExpr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- VarDecl <- (KEYWORD_const / KEYWORD_var) IDENTIFIER (COLON TypeExpr)? ByteAlign? LinkSection? (EQUAL Expr)? SEMICOLON
 
@@ -89,12 +80,10 @@ data VarDecl a
       (Maybe (ByteAlign a))
       (Maybe (LinkSection a))
       (Maybe (Expr a))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 data VarDeclQualifier a
   = VarDeclConst (KeywordConst a)
   | VarDeclVar (KeywordVar a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- ContainerField <- KEYWORD_comptime? IDENTIFIER (COLON TypeExpr)? (EQUAL Expr)?
 
@@ -104,7 +93,6 @@ data ContainerField a
       (Identifier a)
       (Maybe (TypeExpr a))
       (Maybe (Expr a))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- # *** Block Level ***
 -- Statement
@@ -130,7 +118,6 @@ data Statement a
   | StmtLabeled (LabeledStatement a)
   | StmtSwitch (SwitchExpr a)
   | StmtAssign (AssignExpr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- IfStatement
 --     <- IfPrefix BlockExpr ( KEYWORD_else Payload? Statement )?
@@ -139,21 +126,18 @@ data Statement a
 data IfStatement a
   = IfBlock (IfPrefix a) (BlockExpr a) (Maybe ((KeywordElse a), Maybe (Payload a), (Statement a)))
   | IfAssign (IfPrefix a) (AssignExpr a) (Maybe ((KeywordElse a), Maybe (Payload a), (Statement a)))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- LabeledStatement <- BlockLabel? (Block / LoopStatement)
 
 data LabeledStatement a
   = LabeledBlock (Maybe (BlockLabel a)) (Block a)
   | LabeledLoop (Maybe (BlockLabel a)) (LoopStatement a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- LoopStatement <- KEYWORD_inline? (ForStatement / WhileStatement)
 
 data LoopStatement a
   = LoopStmtFor (Maybe (KeywordInline a)) (ForStatement a)
   | LoopStmtWhile (Maybe (KeywordInline a)) (WhileStatement a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- ForStatement
 --     <- ForPrefix BlockExpr ( KEYWORD_else Statement )?
@@ -162,7 +146,6 @@ data LoopStatement a
 data ForStatement a
   = ForBlock (ForPrefix a) (BlockExpr a) (Maybe ((KeywordElse a), (Statement a)))
   | ForAssign (ForPrefix a) (AssignExpr a) (Maybe ((KeywordElse a), (Statement a)))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- WhileStatement
 --     <- WhilePrefix BlockExpr ( KEYWORD_else Payload? Statement )?
@@ -171,7 +154,6 @@ data ForStatement a
 data WhileStatement a
   = WhileBlock (WhilePrefix a) (BlockExpr a) (Maybe ((KeywordElse a), (Statement a)))
   | WhileAssign (WhilePrefix a) (AssignExpr a) (Maybe ((KeywordElse a), (Statement a)))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- BlockExprStatement
 --     <- BlockExpr
@@ -180,63 +162,51 @@ data WhileStatement a
 data BlockExprStatement a
   = BESBlock (BlockExpr a)
   | BESAssign (AssignExpr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- BlockExpr <- BlockLabel? Block
 
 data BlockExpr a = BlockExpr (Maybe (BlockLabel a)) (Block a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- # *** Expression Level ***
 -- AssignExpr <- Expr (AssignOp Expr)?
 
 data AssignExpr a = AssignExpr (Expr a) (Maybe (AssignOp a, Expr a))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- Expr <- KEYWORD_try* BoolOrExpr
 
 data Expr a = Expr [KeywordTry a] (BoolOrExpr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- BoolOrExpr <- BoolAndExpr (KEYWORD_or BoolAndExpr)*
 
 data BoolOrExpr a = BoolOrExpr (NonEmpty (BoolAndExpr a))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- BoolAndExpr <- CompareExpr (KEYWORD_and CompareExpr)*
 
 data BoolAndExpr a = BoolAndExpr (NonEmpty (CompareExpr a))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- CompareExpr <- BitwiseExpr (CompareOp BitwiseExpr)?
 
 data CompareExpr a = CompareExpr (BitwiseExpr a) (Maybe (CompareOp a, BitwiseExpr a))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- BitwiseExpr <- BitShiftExpr (BitwiseOp BitShiftExpr)*
 
 data BitwiseExpr a = BitwiseExpr (BitShiftExpr a) [(BitwiseOp a, BitShiftExpr a)]
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- BitShiftExpr <- AdditionExpr (BitShiftOp AdditionExpr)*
 
 data BitShiftExpr a = BitShiftExpr (AdditionExpr a) [(BitShiftOp a, AdditionExpr a)]
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- AdditionExpr <- MultiplyExpr (AdditionOp MultiplyExpr)*
 
 data AdditionExpr a = AdditionExpr (MultiplyExpr a) [(AdditionOp a, MultiplyExpr a)]
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- MultiplyExpr <- PrefixExpr (MultiplyOp PrefixExpr)*
 
 data MultiplyExpr a = MultiplyExpr (PrefixExpr a) [(MultiplyOp a, PrefixExpr a)]
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- PrefixExpr <- PrefixOp* PrimaryExpr
 
 data PrefixExpr a = PrefixExpr [PrefixOp a] (PrimaryExpr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- PrimaryExpr
 --     <- AsmExpr
@@ -263,7 +233,6 @@ data PrimaryExpr a
   | PrimLoop (Maybe (BlockLabel a)) (LoopExpr a)
   | PrimBlock (Block a)
   | PrimCurlySuffixExpr (CurlySuffixExpr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- IfExpr <- IfPrefix Expr (KEYWORD_else Payload? Expr)?
 
@@ -277,34 +246,28 @@ data IfExpr a
           , Expr a
           )
       )
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- Block <- LBRACE Statement* RBRACE
 
 data Block a = Block [Statement a]
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- LoopExpr <- KEYWORD_inline? (ForExpr / WhileExpr)
 
 data LoopExpr a
   = LoopExprFor (Maybe (KeywordInline a)) (ForExpr a)
   | LoopExprWhile (Maybe (KeywordInline a)) (WhileExpr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- ForExpr <- ForPrefix Expr (KEYWORD_else Expr)?
 
 data ForExpr a = ForExpr (ForPrefix a) (Expr a) (Maybe (KeywordElse a, Expr a))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- WhileExpr <- WhilePrefix Expr (KEYWORD_else Payload? Expr)?
 
 data WhileExpr a = WhileExpr (WhilePrefix a) (Expr a) (Maybe (KeywordElse a, Maybe (Payload a), Expr a))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- CurlySuffixExpr <- TypeExpr InitList?
 
 data CurlySuffixExpr a = CurlySuffixExpr (TypeExpr a) (Maybe (InitList a))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- InitList
 --     <- LBRACE FieldInit (COMMA FieldInit)* COMMA? RBRACE
@@ -315,17 +278,14 @@ data InitList a
   = InitFields (NonEmpty (FieldInit a))
   | InitExpr (NonEmpty (Expr a))
   | InitEmpty
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- TypeExpr <- PrefixTypeOp* ErrorUnionExpr
 
 data TypeExpr a = TypeExpr [PrefixTypeOp a] (ErrorUnionExpr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- ErrorUnionExpr <- SuffixExpr (EXCLAMATIONMARK TypeExpr)?
 
 data ErrorUnionExpr a = ErrorUnionExpr (SuffixExpr a) (Maybe (TypeExpr a))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- SuffixExpr
 --     <- KEYWORD_async PrimaryTypeExpr SuffixOp* FnCallArguments
@@ -334,7 +294,6 @@ data ErrorUnionExpr a = ErrorUnionExpr (SuffixExpr a) (Maybe (TypeExpr a))
 data SuffixExpr a
   = SuffixAsync (KeywordAsync a) (PrimaryTypeExpr a) [SuffixOp a] (FnCallArguments a)
   | SuffixExpr (PrimaryTypeExpr a) [Sum SuffixOp FnCallArguments a]
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- PrimaryTypeExpr
 --     <- BUILTINIDENTIFIER FnCallArguments
@@ -385,7 +344,6 @@ data PrimaryTypeExpr a
   | PrimUnreachable (KeywordUnreachable a)
   | PrimString (StringLit a)
   | PrimSwitch (SwitchExpr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- ContainerDecl <- (KEYWORD_extern / KEYWORD_packed)? ContainerDeclAuto
 
@@ -393,17 +351,14 @@ data ContainerDecl a
   = ContainerExtern (KeywordExtern a) (ContainerDeclAuto a)
   | ContainerPacked (KeywordPacked a) (ContainerDeclAuto a)
   | ContainerDecl (ContainerDeclAuto a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- ErrorSetDecl <- KEYWORD_error LBRACE IdentifierList RBRACE
 
 data ErrorSetDecl a = ErrorSetDecl (KeywordError a) (IdentifierList a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- GroupedExpr <- LPAREN Expr RPAREN
 
 data GroupedExpr a = GroupedExpr (Expr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- IfTypeExpr <- IfPrefix TypeExpr (KEYWORD_else Payload? TypeExpr)?
 
@@ -417,7 +372,6 @@ data IfTypeExpr a
           , TypeExpr a
           )
       )
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- LabeledTypeExpr
 --     <- BlockLabel Block
@@ -426,19 +380,16 @@ data IfTypeExpr a
 data LabeledTypeExpr a
   = LabeledTypeBlock (BlockLabel a) (Block a)
   | LabeledTypeLoop (Maybe (BlockLabel a)) (LoopTypeExpr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- LoopTypeExpr <- KEYWORD_inline? (ForTypeExpr / WhileTypeExpr)
 
 data LoopTypeExpr a
   = LoopTypeFor (Maybe (KeywordInline a)) (ForTypeExpr a)
   | LoopTypeWhile (Maybe (KeywordInline a)) (WhileTypeExpr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- ForTypeExpr <- ForPrefix TypeExpr (KEYWORD_else TypeExpr)?
 
 data ForTypeExpr a = ForTypeExpr (ForPrefix a) (TypeExpr a) (Maybe (KeywordElse a, TypeExpr a))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- WhileTypeExpr <- WhilePrefix TypeExpr (KEYWORD_else Payload? TypeExpr)?
 
@@ -452,12 +403,10 @@ data WhileTypeExpr a
           , TypeExpr a
           )
       )
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- SwitchExpr <- KEYWORD_switch LPAREN Expr RPAREN LBRACE SwitchProngList RBRACE
 
 data SwitchExpr a = SwitchExpr (KeywordSwitch a) (Expr a) (SwitchProngList a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- # *** Assembly ***
 -- AsmExpr <- KEYWORD_asm KEYWORD_volatile? LPAREN STRINGLITERAL AsmOutput? RPAREN
@@ -468,58 +417,47 @@ data AsmExpr a
       (Maybe (KeywordVolatile a))
       (StringLit a)
       (Maybe (AsmOutput a))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- AsmOutput <- COLON AsmOutputList AsmInput?
 
 data AsmOutput a = AsmOutput (AsmOutputList a) (Maybe (AsmInput a))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- AsmOutputItem <- LBRACKET IDENTIFIER RBRACKET STRINGLITERAL LPAREN (MINUSRARROW TypeExpr / IDENTIFIER) RPAREN
 
 data AsmOutputItem a = AsmOutputItem (Identifier a) (StringLit a) (Sum TypeExpr Identifier a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- AsmInput <- COLON AsmInputList AsmClobbers?
 
 data AsmInput a = AsmInput (AsmInputList a) (Maybe (AsmClobbers a))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- AsmInputItem <- LBRACKET IDENTIFIER RBRACKET STRINGLITERAL LPAREN Expr RPAREN
 
 data AsmInputItem a = AsmInputItem (Identifier a) (StringLit a) (Expr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- AsmClobbers <- COLON StringList
 
 data AsmClobbers a = AsmClobbers (StringList a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- # *** Helper grammar ***
 -- BreakLabel <- COLON IDENTIFIER
 
 data BreakLabel a = BreakLabel (Identifier a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- BlockLabel <- IDENTIFIER COLON
 
 data BlockLabel a = BlockLabel (Identifier a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- FieldInit <- DOT IDENTIFIER EQUAL Expr
 
 data FieldInit a = FieldInit (Identifier a) (Expr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- WhileContinueExpr <- COLON LPAREN AssignExpr RPAREN
 
 data WhileContinueExpr a = WhileContinueExpr (AssignExpr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- LinkSection <- KEYWORD_linksection LPAREN Expr RPAREN
 
 data LinkSection a = LinkSection (KeywordLinksection a) (Expr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- ParamDecl <- (KEYWORD_noalias / KEYWORD_comptime)? (IDENTIFIER COLON)? ParamType
 
@@ -527,7 +465,6 @@ data ParamDecl a
   = ParamNoalias (KeywordNoalias a) (Maybe (Identifier a)) (ParamType a)
   | ParamComptime (KeywordComptime a) (Maybe (Identifier a)) (ParamType a)
   | ParamDecl (Maybe (Identifier a)) (ParamType a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- ParamType
 --     <- KEYWORD_anytype
@@ -538,50 +475,41 @@ data ParamType a
   = ParamAnytype (KeywordAnytype a)
   | ParamDot3
   | ParamTypeExpr (TypeExpr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- # Control flow prefixes
 -- IfPrefix <- KEYWORD_if LPAREN Expr RPAREN PtrPayload?
 
 data IfPrefix a = IfPrefix (KeywordIf a) (Expr a) (Maybe (PtrPayload a))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- WhilePrefix <- KEYWORD_while LPAREN Expr RPAREN PtrPayload? WhileContinueExpr?
 
 data WhilePrefix a = WhilePrefix (KeywordWhile a) (Expr a) (Maybe (PtrPayload a)) (Maybe (WhileContinueExpr a))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- ForPrefix <- KEYWORD_for LPAREN Expr RPAREN PtrIndexPayload
 
 data ForPrefix a = ForPrefix (KeywordFor a) (Expr a) (PtrIndexPayload a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- # Payloads
 -- Payload <- PIPE IDENTIFIER PIPE
 
 data Payload a = Payload (Identifier a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 data PtrAsterisk a
   = WithAsterisk a
   | WithoutAsterisk a
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- PtrPayload <- PIPE ASTERISK? IDENTIFIER PIPE
 
 data PtrPayload a = PtrPayload (PtrAsterisk a) (Identifier a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- PtrIndexPayload <- PIPE ASTERISK? IDENTIFIER (COMMA IDENTIFIER)? PIPE
 
 data PtrIndexPayload a = PtrIndexPayload (PtrAsterisk a) (Identifier a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- # Switch specific
 -- SwitchProng <- SwitchCase EQUALRARROW PtrPayload? AssignExpr
 
 data SwitchProng a = SwitchProng (SwitchCase a) (Maybe (PtrPayload a)) (AssignExpr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- SwitchCase
 --     <- SwitchItem (COMMA SwitchItem)* COMMA?
@@ -590,12 +518,10 @@ data SwitchProng a = SwitchProng (SwitchCase a) (Maybe (PtrPayload a)) (AssignEx
 data SwitchCase a
   = CaseItem (NonEmpty (SwitchItem a))
   | CaseElse (KeywordElse a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- SwitchItem <- Expr (DOT3 Expr)?
 
 data SwitchItem a = SwitchItem (Expr a) (Maybe (Expr a))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- # Operators
 -- AssignOp
@@ -629,7 +555,6 @@ data AssignOp a
   | AssignPlusPercentEqual a
   | AssignMinusPercentEqual a
   | AssignEqual a
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- CompareOp
 --     <- EQUALEQUAL
@@ -646,7 +571,6 @@ data CompareOp a
   | CompareRarrow a
   | CompareLarrowEqual a
   | CompareRarrowEqual a
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- BitwiseOp
 --     <- AMPERSAND
@@ -661,7 +585,6 @@ data BitwiseOp a
   | BitwisePipe a
   | BitwiseOrElse (KeywordOrelse a)
   | BitwiseCatch (KeywordCatch a) (Maybe (Payload a))
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- BitShiftOp
 --     <- LARROW2
@@ -670,7 +593,6 @@ data BitwiseOp a
 data BitShiftOp a
   = BitShiftLarrow2 a
   | BitShiftRarrow2 a
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- AdditionOp
 --     <- PLUS
@@ -685,7 +607,6 @@ data AdditionOp a
   | AdditionPlus2 a
   | AdditionPlusPercent a
   | AdditionMinusPercent a
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- MultiplyOp
 --     <- PIPE2
@@ -702,7 +623,6 @@ data MultiplyOp a
   | MultiplyPercent a
   | MultiplyAsterisk2 a
   | MultiplyAsteriskPercent a
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- PrefixOp
 --     <- EXCLAMATIONMARK
@@ -721,7 +641,6 @@ data PrefixOp a
   | PrefixAmpersand a
   | PrefixTry (KeywordTry a)
   | PrefixAwait (KeywordAwait a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- PrefixTypeOp
 --     <- QUESTIONMARK
@@ -734,21 +653,18 @@ data PrefixTypeOp a
   | PrefixTypeAnyFrame (KeywordAnyframe a)
   | PrefixTypeArrayTypeStart [PrefixTypeArrayStartQualifier a]
   | PrefixTypePtrTypeStart [PrefixTypePtrStartQualifier a]
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 data PrefixTypeArrayStartQualifier a
   = PrefixTASQAlign (ByteAlign a)
   | PrefixTASQConst (KeywordConst a)
   | PrefixTASQVolatile (KeywordVolatile a)
   | PrefixTASQAllowZero (KeywordAllowzero a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 data PrefixTypePtrStartQualifier a
   = PrefixTPSQAlign (KeywordAlign a) (Expr a) (Maybe (IntLit a, IntLit a))
   | PrefixTPSQConst (KeywordConst a)
   | PrefixTPSQVolatile (KeywordVolatile a)
   | PrefixTPSQAllowZero (KeywordAllowzero a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- SuffixOp
 --     <- LBRACKET Expr (DOT2 Expr?)? RBRACKET
@@ -761,12 +677,10 @@ data SuffixOp a
   | SuffixOpId (Identifier a)
   | SuffixOpAsterisk
   | SuffixOpQuestion
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- FnCallArguments <- LPAREN ExprList RPAREN
 
 data FnCallArguments a = FnCallArguments (ExprList a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- # Ptr specific
 -- ArrayTypeStart <- LBRACKET Expr? RBRACKET
@@ -781,7 +695,6 @@ data FnCallArguments a = FnCallArguments (ExprList a)
 -- ContainerDeclAuto <- ContainerDeclType LBRACE ContainerMembers RBRACE
 
 data ContainerDeclAuto a = ContainerDeclAuto (ContainerDeclType a) (ContainerMembers a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- ContainerDeclType
 --     <- (KEYWORD_struct / KEYWORD_enum / KEYWORD_opaque) (LPAREN Expr RPAREN)?
@@ -794,46 +707,38 @@ data ContainerDeclType a
   | ContEmptyUnion (KeywordUnion a)
   | ContEnumUnion (KeywordUnion a) (KeywordEnum a) (Maybe (Expr a))
   | ContUnion (KeywordUnion a) (Expr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- # Alignment
 -- ByteAlign <- KEYWORD_align LPAREN Expr RPAREN
 
 data ByteAlign a = ByteAlign (KeywordAlign a) (Expr a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- # Lists
 -- IdentifierList <- (IDENTIFIER COMMA)* IDENTIFIER?
 
 data IdentifierList a = IdentifierList [Identifier a]
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- SwitchProngList <- (SwitchProng COMMA)* SwitchProng?
 
 data SwitchProngList a = SwitchProngList [SwitchProng a]
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- AsmOutputList <- (AsmOutputItem COMMA)* AsmOutputItem?
 
 data AsmOutputList a = AsmOutputList [AsmOutputItem a]
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- AsmInputList <- (AsmInputItem COMMA)* AsmInputItem?
 
 data AsmInputList a = AsmInputList [AsmInputItem a]
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- StringList <- (STRINGLITERAL COMMA)* STRINGLITERAL?
 
 data StringList a = StringList [StringLit a]
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- ParamDeclList <- (ParamDecl COMMA)* ParamDecl?
 --
 -- ExprList <- (Expr COMMA)* Expr?
 
 data ExprList a = ExprList [Expr a]
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- # *** Tokens ***
 -- eof <- !.
@@ -853,14 +758,12 @@ data ExprList a = ExprList [Expr a]
 -- line_string <- ("\\\\" [^\n]* [ \n]*)+
 
 data LineString a = LineString a ByteString
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- skip <- ([ \n] / line_comment)*
 --
 -- CHAR_LITERAL <- "'" char_char "'" skip
 
 data CharLiteral a = CharLiteral a Char
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- FLOAT
 --     <- "0x" hex+   "." hex+   ([pP] [-+]? hex+)?   skip
@@ -869,7 +772,6 @@ data CharLiteral a = CharLiteral a Char
 --      /      [0-9]+ "."? [eE] [-+]? [0-9]+ skip
 
 data FloatLit a = FloatLit a Double -- FIXME Scary
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 --
 -- INTEGER
@@ -879,12 +781,10 @@ data FloatLit a = FloatLit a Double -- FIXME Scary
 --      /      [0-9]+ skip
 
 data IntLit a = IntLit a Integer
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- STRINGLITERALSINGLE <- "\"" string_char* "\"" skip
 
 data StringLiteralSingle a = StringLiteralSingle a ByteString
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- STRINGLITERAL
 --     <- STRINGLITERALSINGLE
@@ -893,7 +793,6 @@ data StringLiteralSingle a = StringLiteralSingle a ByteString
 data StringLit a
   = StringLitSingle (StringLiteralSingle a)
   | StringLitLine (LineString a)
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- IDENTIFIER
 --     <- !keyword [A-Za-z_] [A-Za-z0-9_]* skip
@@ -902,12 +801,10 @@ data StringLit a
 data Identifier a
   = Identifier a ByteString
   | AtIdentifier a ByteString
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- BUILTINIDENTIFIER <- "@"[A-Za-z_][A-Za-z0-9_]* skip
 
 data BuiltinIdentifier a = BuiltinIdentifier a ByteString
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- AMPERSAND            <- '&'      ![=]      skip
 -- AMPERSANDEQUAL       <- '&='               skip
@@ -1034,153 +931,103 @@ data BuiltinIdentifier a = BuiltinIdentifier a ByteString
 --          / KEYWORD_usingnamespace / KEYWORD_var / KEYWORD_volatile / KEYWORD_while
 
 newtype KeywordAlign a = KeywordAlign {unKeywordAlign :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordAnd a = KeywordAnd {unKeywordAnd :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordAnyframe a = KeywordAnyframe {unKeywordAnyframe :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordAnytype a = KeywordAnytype {unKeywordAnytype :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordAllowzero a = KeywordAllowzero {unKeywordAllowzero :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordAsm a = KeywordAsm {unKeywordAsm :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordAsync a = KeywordAsync {unKeywordAsync :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordAwait a = KeywordAwait {unKeywordAwait :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordBreak a = KeywordBreak {unKeywordBreak :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordCatch a = KeywordCatch {unKeywordCatch :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordComptime a = KeywordComptime {unKeywordComptime :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordConst a = KeywordConst {unKeywordConst :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordContinue a = KeywordContinue {unKeywordContinue :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordDefer a = KeywordDefer {unKeywordDefer :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordElse a = KeywordElse {unKeywordElse :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordEnum a = KeywordEnum {unKeywordEnum :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordErrdefer a = KeywordErrdefer {unKeywordErrdefer :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordError a = KeywordError {unKeywordError :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordExport a = KeywordExport {unKeywordExport :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordExtern a = KeywordExtern {unKeywordExtern :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordFalse a = KeywordFalse {unKeywordFalse :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordFor a = KeywordFor {unKeywordFor :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordFn a = KeywordFn {unKeywordFn :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordIf a = KeywordIf {unKeywordIf :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordInline a = KeywordInline {unKeywordInline :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordNoalias a = KeywordNoalias {unKeywordNoalias :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordNull a = KeywordNull {unKeywordNull :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordOpaque a = KeywordOpaque {unKeywordOpaque :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordOr a = KeywordOr {unKeywordOr :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordOrelse a = KeywordOrelse {unKeywordOrelse :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordPacked a = KeywordPacked {unKeywordPacked :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordPub a = KeywordPub {unKeywordPub :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordResume a = KeywordResume {unKeywordResume :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordReturn a = KeywordReturn {unKeywordReturn :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordLinksection a = KeywordLinksection {unKeywordLinksection :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordStruct a = KeywordStruct {unKeywordStruct :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordSuspend a = KeywordSuspend {unKeywordSuspend :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordSwitch a = KeywordSwitch {unKeywordSwitch :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordTest a = KeywordTest {unKeywordTest :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordThreadlocal a = KeywordThreadlocal {unKeywordThreadlocal :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordTrue a = KeywordTrue {unKeywordTrue :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordTry a = KeywordTry {unKeywordTry :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordUndefined a = KeywordUndefined {unKeywordUndefined :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordUnion a = KeywordUnion {unKeywordUnion :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordUnreachable a = KeywordUnreachable {unKeywordUnreachable :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordUsingnamespace a = KeywordUsingnamespace {unKeywordUsingnamespace :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordVar a = KeywordVar {unKeywordVar :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordVolatile a = KeywordVolatile {unKeywordVolatile :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 newtype KeywordWhile a = KeywordWhile {unKeywordWhile :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)
 
 -- Weird:
 
 newtype KeywordNoSuspend a = KeywordNoSuspend {unKeywordNoSuspend :: a}
-  deriving (Eq, Show, Typeable, Generic, Functor, Foldable, Traversable)

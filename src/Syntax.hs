@@ -59,10 +59,7 @@ pIdentifier :: Parser Identifier
 pIdentifier =
   choice
     [ todo "@\"identifier\""
-    , wordSuchThat $ \w ->
-        if isKeyword w
-          then Left $ unexpected $ Label $ 'k' :| ("eyword \"" <> BS8.unpack w <> "\"")
-          else Right $ Identifier w
+    , Identifier <$> pNakedIdentifier
     ]
 
 pFunction :: Parser Function

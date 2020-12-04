@@ -9,7 +9,7 @@ import GHC.Generics
 
 -- Some day: pAST :: Parser AST
 
-data Zig = Zig [ContainerMember]
+newtype Zig = Zig StructDef
   deriving (Eq, Show, Typeable, Generic)
 
 data Identifier = Identifier ByteString
