@@ -6,19 +6,18 @@ module AST where
 import Data.ByteString (ByteString)
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Typeable
 import GHC.Generics
 
 -- Some day: pAST :: Parser AST
 
 newtype Zig = Zig StructDef
-  deriving (Eq, Show, Typeable, Generic)
+  deriving (Eq, Show, Generic)
 
 data Identifier = Identifier ByteString
-  deriving (Eq, Ord, Show, Typeable, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 data ParamDecl
-  deriving (Eq, Show, Typeable, Generic)
+  deriving (Eq, Show, Generic)
 
 data ContainerMember
   = TlFunction Visibility Function
@@ -27,21 +26,21 @@ data ContainerMember
   --- | Test TestDeclaration
   --- | Comptime { block }
   --- | ContainerField
-  deriving (Eq, Show, Typeable, Generic)
+  deriving (Eq, Show, Generic)
 
 data Visibility = Private | Public
-  deriving (Eq, Show, Enum, Typeable, Generic)
+  deriving (Eq, Show, Enum, Generic)
 
 data CompileTime = Runtime | CompileTime
-  deriving (Eq, Show, Enum, Typeable, Generic)
+  deriving (Eq, Show, Enum, Generic)
 
 newtype Alignment = Alignment Expression
-  deriving (Eq, Show, Typeable, Generic)
+  deriving (Eq, Show, Generic)
 newtype Linking = Linking Expression
-  deriving (Eq, Show, Typeable, Generic)
+  deriving (Eq, Show, Generic)
 
 data ReturnType = AnyType | TypeExpression Expression
-  deriving (Eq, Show, Typeable, Generic)
+  deriving (Eq, Show, Generic)
 
 data Function = Function
   { fnId :: Identifier
@@ -51,7 +50,7 @@ data Function = Function
   , fnRetType :: ReturnType
   , fnBody :: [Statement]
   }
-  deriving (Eq, Show, Typeable, Generic)
+  deriving (Eq, Show, Generic)
 
 data Expression
   = Int Integer
@@ -65,30 +64,30 @@ data Expression
   | ErrorUnion Expression Expression
   | IdentifierExpr Identifier
   | StructDefExpr StructDef
-  deriving (Eq, Show, Typeable, Generic)
+  deriving (Eq, Show, Generic)
 
 -- TODO
 newtype Field = Field ()
-  deriving (Eq, Show, Typeable, Generic)
+  deriving (Eq, Show, Generic)
 
 data StructDef = StructDef
   { sdField :: Map Identifier Field
   , sdFunction :: Map Identifier (Visibility, Function)
   }
-  deriving (Eq, Show, Typeable, Generic)
+  deriving (Eq, Show, Generic)
 
 data ContainerQualifier = Extern | Packed
-  deriving (Eq, Show, Typeable, Generic)
+  deriving (Eq, Show, Generic)
 
 data ContainerType
   = Struct (Maybe Expression)
-  deriving (Eq, Show, Typeable, Generic)
+  deriving (Eq, Show, Generic)
 
 data Constness = Var | Const
-  deriving (Eq, Show, Typeable, Generic)
+  deriving (Eq, Show, Generic)
 
 data InitList
-  deriving (Eq, Show, Typeable, Generic)
+  deriving (Eq, Show, Generic)
 
 data Declaration = Declaration
   { varQualifier :: CompileTime -- TODO have this here?
@@ -99,13 +98,13 @@ data Declaration = Declaration
   , varLink :: Maybe Linking
   , varValue :: Maybe Expression
   }
-  deriving (Eq, Show, Typeable, Generic)
+  deriving (Eq, Show, Generic)
 
 data Statement
   = DeclarationStatement Declaration
   | AssignmentStatement Expression AssignOp Expression -- var = value
   | ExpressionStatement Expression -- value
-  deriving (Eq, Show, Typeable, Generic)
+  deriving (Eq, Show, Generic)
 
 data AssignOp
-  deriving (Eq, Show, Typeable, Generic)
+  deriving (Eq, Show, Generic)

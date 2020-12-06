@@ -1,0 +1,182 @@
+Right
+( Root
+  ( CMTopLevelDecl
+    ( Just
+      ( KeywordPub
+        { unKeywordPub = Span 0 3 }
+      )
+    )
+    ( TLFnProto Nothing
+      ( FnProto
+        ( KeywordFn
+          { unKeywordFn = Span 4 6 }
+        )
+        ( Just
+          ( Identifier
+            ( Span 7 11 ) "main"
+          )
+        ) [] Nothing Nothing Nothing
+        ( That
+          ( TypeExpr []
+            ( ErrorUnionExpr
+              ( SuffixExpr
+                ( PrimId
+                  ( Identifier
+                    ( Span 14 16 ) "u8"
+                  )
+                ) []
+              ) Nothing
+            )
+          )
+        )
+        )
+        ( Just
+          ( Block
+            [ StmtDecl Nothing
+            ( VarDecl
+              ( VarDeclConst
+                ( KeywordConst
+                  { unKeywordConst = Span 23 28 }
+                )
+              )
+              ( Identifier
+                ( Span 29 33 ) "exit"
+              )
+              ( Just
+                ( TypeExpr []
+                  ( ErrorUnionExpr
+                    ( SuffixExpr
+                      ( PrimId
+                        ( Identifier
+                          ( Span 35 37 ) "u8"
+                        )
+                      ) []
+                    ) Nothing
+                  )
+                )
+              ) Nothing Nothing
+              ( Just
+                ( Expr []
+                  ( BoolOrExpr
+                    ( BoolAndExpr
+                      ( CompareExpr
+                        ( BitwiseExpr
+                          ( BitShiftExpr
+                            ( AdditionExpr
+                              ( MultiplyExpr
+                                ( PrefixExpr []
+                                  ( PrimCurlySuffixExpr
+                                    ( CurlySuffixExpr
+                                      ( TypeExpr []
+                                        ( ErrorUnionExpr
+                                          ( SuffixExpr
+                                            ( PrimInt
+                                              ( IntLit
+                                                ( Span 40 42 ) 11
+                                              )
+                                            ) []
+                                          ) Nothing
+                                        )
+                                      ) Nothing
+                                    )
+                                  )
+                                )
+                                [
+                                ( MultiplyAsterisk
+                                  ( Span 43 45 )
+                                  , PrefixExpr []
+                                  ( PrimCurlySuffixExpr
+                                    ( CurlySuffixExpr
+                                      ( TypeExpr []
+                                        ( ErrorUnionExpr
+                                          ( SuffixExpr
+                                            ( PrimInt
+                                              ( IntLit
+                                                ( Span 45 47 ) 13
+                                              )
+                                            ) []
+                                          ) Nothing
+                                        )
+                                      ) Nothing
+                                    )
+                                  )
+                                )
+                                ]
+                                ) []
+                                ) []
+                                ) []
+                                ) Nothing :| []
+                                ) :| []
+                                    )
+                                        )
+                                            )
+                                                )
+                                                    )
+                                                        , StmtAssign
+                                                          ( AssignExpr
+                                                            ( Expr []
+                                                              ( BoolOrExpr
+                                                                ( BoolAndExpr
+                                                                  ( CompareExpr
+                                                                    ( BitwiseExpr
+                                                                      ( BitShiftExpr
+                                                                        ( AdditionExpr
+                                                                          ( MultiplyExpr
+                                                                            ( PrefixExpr []
+                                                                              ( PrimReturn
+                                                                                ( KeywordReturn
+                                                                                  { unKeywordReturn = Span 53 59 }
+                                                                                )
+                                                                                ( Just
+                                                                                  ( Expr []
+                                                                                    ( BoolOrExpr
+                                                                                      ( BoolAndExpr
+                                                                                        ( CompareExpr
+                                                                                          ( BitwiseExpr
+                                                                                            ( BitShiftExpr
+                                                                                              ( AdditionExpr
+                                                                                                ( MultiplyExpr
+                                                                                                  ( PrefixExpr []
+                                                                                                    ( PrimCurlySuffixExpr
+                                                                                                      ( CurlySuffixExpr
+                                                                                                        ( TypeExpr []
+                                                                                                          ( ErrorUnionExpr
+                                                                                                            ( SuffixExpr
+                                                                                                              ( PrimId
+                                                                                                                ( Identifier
+                                                                                                                  ( Span 60 64 ) "exit"
+                                                                                                                )
+                                                                                                              ) []
+                                                                                                            ) Nothing
+                                                                                                          )
+                                                                                                        ) Nothing
+                                                                                                      )
+                                                                                                    )
+                                                                                                  ) []
+                                                                                                ) []
+                                                                                              ) []
+                                                                                              ) []
+                                                                                              ) Nothing :| []
+                                                                                              ) :| []
+                                                                                                  )
+                                                                                                      )
+                                                                                                          )
+                                                                                                              )
+                                                                                                                  )
+                                                                                                                      ) []
+                                                                                                                          ) []
+                                                                                                                              ) []
+                                                                                                                                  ) []
+                                                                                                                                      ) Nothing :| []
+                                                                                                                                        ) :| []
+                                                                                                                                            )
+                                                                                                                                                )
+                                                                                                                                                    ) Nothing
+                                                                                                                                                      )
+                                                                                                                                                      ]
+                                                                                                                                                      )
+                                                                                                                                                      )
+                                                                                                                                                      ) CMContainerEmpty
+                                                                                                                                                      )
+                                                                                                                                                      )
+

@@ -1,19 +1,16 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 module Eval where
 
 import AST
 import Data.Map (Map)
 import Data.Word
+import GHC.Generics (Generic)
 
-data RuntimeValue
-  = U8 Word8
-  | Comptime ComptimeValue
+data Signedness = Signed | Unsigned
+  deriving (Eq, Show, Generic)
 
-data ComptimeValue
-  = ComptimeInt Integer
-
---- | Function Expression
-
-data Type = Infer
+data Type = Integer {signed :: Signedness, bits :: Word16}
 
 data TypeError
 
