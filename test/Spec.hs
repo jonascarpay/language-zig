@@ -1,18 +1,24 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
 import Control.Monad
+import Data.Bits
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as CS
+import Data.Int
 import Grammar
+import Program
 import Syntax
 import System.Directory
 import System.FilePath
 import Test.Tasty
 import Test.Tasty.HUnit
+import Test.Tasty.QuickCheck
 import Text.Megaparsec
+import VM
 
 testParse :: Parser a -> ByteString -> IO ()
 testParse parser str =
@@ -53,68 +59,81 @@ loadFixtures root = do
     bs <- BS.readFile (root </> fp)
     pure (fp, bs)
 
+value :: TestTree
+value =
+  testGroup
+    "value properties"
+    [ testProperty "aa" $ \(Large (n :: Int)) -> n == toNum (fromNum n)
+    ]
+
+parsing :: TestTree
+parsing =
+  testGroup
+    "parsing"
+    [ testGroup
+        "tokenization"
+        [ testParser
+            "token"
+            (keyword "token" <* eof)
+            [ ("naked", "token")
+            , ("trailing space", "token   ")
+            , ("trailing comment", "token // hurr")
+            , ("newline comment", "token\n// hurr")
+            ]
+            [ ("empty", "")
+            , ("leading comment", "// hurr\ntoken")
+            , ("leading space", "   token")
+            , ("two words", "token token")
+            ]
+        , testParser
+            "two identifier"
+            ((,) <$> keyword "a" <*> keyword "b" <* eof)
+            [ ("naked", "a b")
+            , ("separated by newline", "a\nb")
+            , ("separated by tab", "a\tb")
+            , ("separated by comment", "a// comment\nb")
+            ]
+            [("unspaced", "ab"), ("three tokens", "a b c")]
+        ]
+    , testParser
+        "word"
+        word
+        [ ("naked", "word")
+        , ("leading _", "_word")
+        , ("capitalized", "Word")
+        , ("digits", "w0rd")
+        ]
+        [ ("empty", "")
+        , ("leading digits", "0word")
+        , ("leading @", "@word")
+        ]
+    , testParser
+        "colon"
+        (pIdentifier <* symbol ":" <* eof)
+        [ ("with colon", "word:")
+        , ("trailing space", "word:   ")
+        , ("interspaced", "word   :   ")
+        ]
+        []
+    , testParser
+        "identifier"
+        pIdentifier
+        [ ("normal", "normal")
+        , ("nonleading digits", "d1g1ts_")
+        ]
+        [ ("keyword", "comptime")
+        , ("leading digit", "0token")
+        , ("leading @", "@ident")
+        ]
+    ]
+
 main :: IO ()
 main = do
   fixtures <- loadFixtures "test/fixtures/"
   defaultMain $
     testGroup
       "tests"
-      [ testGroup
-          "tokenization"
-          [ testParser
-              "token"
-              (keyword "token" <* eof)
-              [ ("naked", "token")
-              , ("trailing space", "token   ")
-              , ("trailing comment", "token // hurr")
-              , ("newline comment", "token\n// hurr")
-              ]
-              [ ("empty", "")
-              , ("leading comment", "// hurr\ntoken")
-              , ("leading space", "   token")
-              , ("two words", "token token")
-              ]
-          , testParser
-              "two identifier"
-              ((,) <$> keyword "a" <*> keyword "b" <* eof)
-              [ ("naked", "a b")
-              , ("separated by newline", "a\nb")
-              , ("separated by tab", "a\tb")
-              , ("separated by comment", "a// comment\nb")
-              ]
-              [ ("unspaced", "ab")
-              , ("three tokens", "a b c")
-              ]
-          ]
-      , testParser
-          "word"
-          word
-          [ ("naked", "word")
-          , ("leading _", "_word")
-          , ("capitalized", "Word")
-          , ("digits", "w0rd")
-          ]
-          [ ("empty", "")
-          , ("leading digits", "0word")
-          , ("leading @", "@word")
-          ]
-      , testParser
-          "colon"
-          (pIdentifier <* symbol ":" <* eof)
-          [ ("with colon", "word:")
-          , ("trailing space", "word:   ")
-          , ("interspaced", "word   :   ")
-          ]
-          []
-      , testParser
-          "identifier"
-          pIdentifier
-          [ ("normal", "normal")
-          , ("nonleading digits", "d1g1ts_")
-          ]
-          [ ("keyword", "comptime")
-          , ("leading digit", "0token")
-          , ("leading @", "@ident")
-          ]
+      [ value
+      , parsing
       , testParser "whole file parsing" pZig fixtures []
       ]

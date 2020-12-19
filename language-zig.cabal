@@ -29,9 +29,10 @@ library
   hs-source-dirs:  src
   exposed-modules:
     AST
-    Eval
+    Program
     Syntax
     Util
+    VM
 
   build-depends:
     , bytestring
@@ -41,6 +42,7 @@ library
     , parser-combinators
     , pretty-simple
     , prettyprinter
+    , vector
 
 -- TODO remove pretty-simple
 executable language-zig-exe
@@ -66,12 +68,14 @@ test-suite language-zig-test
     , filepath
     , language-zig
     , megaparsec
+    , mtl
     , parser-combinators
     , tasty
     , tasty-hunit
     , tasty-quickcheck
+    , vector
 
-  -- containers, parser-combinators is not actually used, see hack
+  -- vector, mtl, containers, parser-combinators is not actually used, see hack
   ghc-options:    -threaded -rtsopts -with-rtsopts=-N
 
 benchmark language-zig-bench
