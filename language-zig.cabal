@@ -29,10 +29,10 @@ library
   hs-source-dirs:  src
   exposed-modules:
     AST
-    Program
+    Runtime.Program
+    Runtime.VM
     Syntax
     Util
-    VM
 
   build-depends:
     , bytestring

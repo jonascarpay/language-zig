@@ -10,7 +10,7 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as CS
 import Data.Int
 import Grammar
-import Program
+import Runtime.Program
 import Syntax
 import System.Directory
 import System.FilePath
@@ -18,7 +18,7 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
 import Text.Megaparsec
-import VM
+import Runtime.VM
 
 testParse :: Parser a -> ByteString -> IO ()
 testParse parser str =

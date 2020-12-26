@@ -3,7 +3,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Program where
+module Runtime.Program where
 
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -25,21 +25,21 @@ data Cofree f a = (:<) {extract :: a, unwrap :: f (Cofree f a)}
   deriving (Functor, Foldable, Traversable)
 
 type a :< f = Cofree f a
+
 type AST = Type :< ASTF
 
-data Named t
-  = Function [Type] Type (t :< ASTF)
+data TopLevel t
+  = Function [(Name, Type)] Type (t :< ASTF)
   | Global Type (Maybe Value)
   deriving (Functor, Foldable, Traversable)
 
-nameType :: Named t -> Type
-nameType (Function ts t _) = TFunction ts t
-nameType (Global t _) = t
+tlType :: TopLevel t -> Type
+tlType (Function args t _) = TFunction (snd <$> args) t
+tlType (Global t _) = t
 
-data FunDecl t = FunDecl [Type] Type (t :< ASTF)
 data GlobalDecl = GlobalDecl Type (Maybe Value)
 
-newtype Program t = Program (Map Name (Named t))
+newtype Program t = Program (Map Name (TopLevel t))
 
 data Type
   = TFunction [Type] Type
@@ -67,12 +67,20 @@ data TypeError
   | ArgumentLengthMismatch
   | Mismatch
 
+mergeEnvs :: Env -> Env -> Typecheck Env
+mergeEnvs a b =
+  case M.toList $ M.intersectionWith (,) a b of
+    [] -> pure $ a <> b
+    ((n, (ta, tb)) : _) -> throwError $ NameCollision n ta tb
+
 typecheck :: Program () -> Either TypeError (Program Type)
 typecheck (Program prog) = Program <$> traverse f prog
- where
-  f (Global t v) = pure $ Global t v
-  f (Function t ts c) = Function t ts <$> evalStateT (check c) env0
-  env0 = nameType <$> prog
+  where
+    f (Global t v) = pure $ Global t v
+    f (Function args ret c) = Function args ret <$> evalStateT (check c) (env0 <> argenv)
+      where
+        env0 = tlType <$> prog
+        argenv = M.fromList args
 
 type Typecheck a = StateT Env (Either TypeError) a
 
@@ -104,7 +112,7 @@ check (_ :< Bind name t mv) =
       mv' <- forM mv $ \v -> do
         v' <- check v
         unify (extract v') t
-        pure $ v'
+        pure v'
       modify (M.insert name t)
       pure $ TVoid :< Bind name t mv'
     Just t' -> throwError $ NameCollision name t t'
