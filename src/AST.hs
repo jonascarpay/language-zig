@@ -36,6 +36,7 @@ data CompileTime = Runtime | CompileTime
 
 newtype Alignment = Alignment Expression
   deriving (Eq, Show, Generic)
+
 newtype Linking = Linking Expression
   deriving (Eq, Show, Generic)
 
@@ -43,12 +44,12 @@ data ReturnType = AnyType | TypeExpression Expression
   deriving (Eq, Show, Generic)
 
 data Function = Function
-  { fnId :: Identifier
-  , fnParams :: [ParamDecl]
-  , fnAlign :: Maybe Alignment
-  , fnLink :: Maybe Linking
-  , fnRetType :: ReturnType
-  , fnBody :: [Statement]
+  { fnId :: Identifier,
+    fnParams :: [ParamDecl],
+    fnAlign :: Maybe Alignment,
+    fnLink :: Maybe Linking,
+    fnRetType :: ReturnType,
+    fnBody :: [Statement]
   }
   deriving (Eq, Show, Generic)
 
@@ -71,8 +72,8 @@ newtype Field = Field ()
   deriving (Eq, Show, Generic)
 
 data StructDef = StructDef
-  { sdField :: Map Identifier Field
-  , sdFunction :: Map Identifier (Visibility, Function)
+  { sdField :: Map Identifier Field,
+    sdFunction :: Map Identifier (Visibility, Function)
   }
   deriving (Eq, Show, Generic)
 
@@ -90,13 +91,13 @@ data InitList
   deriving (Eq, Show, Generic)
 
 data Declaration = Declaration
-  { varQualifier :: CompileTime -- TODO have this here?
-  , varConst :: Constness
-  , varId :: Maybe Identifier
-  , varType :: Maybe Expression
-  , varAlign :: Maybe Alignment
-  , varLink :: Maybe Linking
-  , varValue :: Maybe Expression
+  { varQualifier :: CompileTime, -- TODO have this here?
+    varConst :: Constness,
+    varId :: Maybe Identifier,
+    varType :: Maybe Expression,
+    varAlign :: Maybe Alignment,
+    varLink :: Maybe Linking,
+    varValue :: Maybe Expression
   }
   deriving (Eq, Show, Generic)
 

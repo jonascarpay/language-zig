@@ -29,7 +29,11 @@ library
   hs-source-dirs:  src
   exposed-modules:
     AST
-    Runtime.Program
+    Runtime.Allocate
+    Runtime.AST
+    Runtime.Eval
+    Runtime.Typecheck
+    Runtime.Value
     Runtime.VM
     Syntax
     Util
@@ -42,6 +46,7 @@ library
     , parser-combinators
     , pretty-simple
     , prettyprinter
+    , transformers
     , vector
 
 -- TODO remove pretty-simple
@@ -77,6 +82,9 @@ test-suite language-zig-test
 
   -- vector, mtl, containers, parser-combinators is not actually used, see hack
   ghc-options:    -threaded -rtsopts -with-rtsopts=-N
+  other-modules:
+    Test.Parse
+    Test.Value
 
 benchmark language-zig-bench
   import:         common-options

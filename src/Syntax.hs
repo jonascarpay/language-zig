@@ -3,7 +3,6 @@
 module Syntax where
 
 import AST
-import Control.Applicative.Combinators.NonEmpty qualified as NE
 import Control.Monad
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
@@ -31,21 +30,21 @@ pZig = do
 pContainerMembers :: Parser [ContainerMember]
 pContainerMembers =
   choice
-    [ (:) <$> pTestDecl <*> pContainerMembers
-    , (:) <$> pBlockExpr <*> pContainerMembers
-    , (:) <$> pTlFunction <*> pContainerMembers
-    , (:) <$> pContainerField <*> (comma *> pContainerMembers)
-    , pure <$> pContainerField
-    , pure []
+    [ (:) <$> pTestDecl <*> pContainerMembers,
+      (:) <$> pBlockExpr <*> pContainerMembers,
+      (:) <$> pTlFunction <*> pContainerMembers,
+      (:) <$> pContainerField <*> (comma *> pContainerMembers),
+      pure <$> pContainerField,
+      pure []
     ]
- where
-  pTlFunction = TlFunction <$> pVisibility <*> pFunction
-  pBlockExpr :: Parser ContainerMember
-  pBlockExpr = todo "BlockExpr"
-  pTestDecl :: Parser ContainerMember
-  pTestDecl = todo "TestDecl"
-  pContainerField :: Parser ContainerMember
-  pContainerField = todo "ContainerField"
+  where
+    pTlFunction = TlFunction <$> pVisibility <*> pFunction
+    pBlockExpr :: Parser ContainerMember
+    pBlockExpr = todo "BlockExpr"
+    pTestDecl :: Parser ContainerMember
+    pTestDecl = todo "TestDecl"
+    pContainerField :: Parser ContainerMember
+    pContainerField = todo "ContainerField"
 
 pVisibility :: Parser Visibility
 pVisibility = Public <$ keyword "pub" <|> pure Private
@@ -59,20 +58,20 @@ pConstness = Const <$ keyword "const" <|> Var <$ keyword "var"
 pIdentifier :: Parser Identifier
 pIdentifier =
   choice
-    [ todo "@\"identifier\""
-    , Identifier <$> pNakedIdentifier
+    [ todo "@\"identifier\"",
+      Identifier <$> pNakedIdentifier
     ]
 
 pFunction :: Parser Function
 pFunction =
   keyword "fn"
     *> ( Function
-          <$> pIdentifier
-          <*> parens (commaSep pParamDecl)
-          <*> optional pAlignment
-          <*> optional pLinking
-          <*> pReturnType
-          <*> (pBlock <|> pure [])
+           <$> pIdentifier
+           <*> parens (commaSep pParamDecl)
+           <*> optional pAlignment
+           <*> optional pLinking
+           <*> pReturnType
+           <*> (pBlock <|> pure [])
        )
 
 pParamDecl :: Parser ParamDecl
@@ -96,10 +95,10 @@ pTypeExpr = do
 pPrefixTypeOp :: Parser (Expression -> Expression)
 pPrefixTypeOp =
   choice
-    [ Questionmark <$ questionmark
-    , todo "AnyFrame"
-    , todo "ArrayTypeStart"
-    , todo "PtrTypeStart"
+    [ Questionmark <$ questionmark,
+      todo "AnyFrame",
+      todo "ArrayTypeStart",
+      todo "PtrTypeStart"
     ]
 
 pErrorUnionExpr :: Parser Expression
@@ -112,62 +111,62 @@ pErrorUnionExpr = do
 
 pSuffixExpr :: Parser Expression
 pSuffixExpr = pAsync <|> pNonAsync
- where
-  pAsync :: Parser Expression
-  pAsync = todo "async"
-  pNonAsync :: Parser Expression
-  pNonAsync = do
-    prim <- pPrimaryTypeExpr
-    _ <- many (todo "suffix")
-    pure prim
+  where
+    pAsync :: Parser Expression
+    pAsync = todo "async"
+    pNonAsync :: Parser Expression
+    pNonAsync = do
+      prim <- pPrimaryTypeExpr
+      _ <- many (todo "suffix")
+      pure prim
 
 pPrimaryTypeExpr :: Parser Expression
 pPrimaryTypeExpr =
   choice
-    [ todo "PrimBuiltin" -- PrimBuiltin (BuiltinIdentifier a) (FnCallArguments a)
-    , todo "PrimCharLiteral" -- PrimCharLiteral (CharLiteral a)
-    , pContainerDecl -- PrimContainer (ContainerDecl a)
-    , todo "PrimDotId" -- PrimDotId (Identifier a)
-    , todo "PrimInitList" -- PrimInitList (InitList a)
-    , todo "PrimErrorSet" -- PrimErrorSet (ErrorSetDecl a)
-    , todo "PrimFloat" -- PrimFloat (FloatLit a)
-    , todo "PrimFnProto" -- PrimFnProto (FnProto a)
-    , todo "PrimGrouped" -- PrimGrouped (GroupedExpr a)
-    , todo "PrimLabeledType" -- PrimLabeledType (LabeledTypeExpr a)
-    , IdentifierExpr <$> pIdentifier -- PrimId (Identifier a)
-    , todo "PrimIfType" -- PrimIfType (IfTypeExpr a)
-    , Int <$> pIntLit -- PrimInt (IntLit a)
-    , todo "PrimType" -- PrimType (KeywordComptime a) (TypeExpr a)
-    , todo "PrimErrId" -- PrimErrId (KeywordError a) (Identifier a)
-    , todo "PrimFalse" -- PrimFalse (KeywordFalse a)
-    , todo "PrimNull" -- PrimNull (KeywordNull a)
-    , todo "PrimAnyFrame" -- PrimAnyFrame (KeywordAnyframe a)
-    , todo "PrimTrue" -- PrimTrue (KeywordTrue a)
-    , todo "PrimUndefined" -- PrimUndefined (KeywordUndefined a)
-    , todo "PrimUnreachable" -- PrimUnreachable (KeywordUnreachable a)
-    , todo "PrimString" -- PrimString (StringLit a)
-    , todo "PrimSwitch" -- PrimSwitch (SwitchExpr a)
+    [ todo "PrimBuiltin", -- PrimBuiltin (BuiltinIdentifier a) (FnCallArguments a)
+      todo "PrimCharLiteral", -- PrimCharLiteral (CharLiteral a)
+      pContainerDecl, -- PrimContainer (ContainerDecl a)
+      todo "PrimDotId", -- PrimDotId (Identifier a)
+      todo "PrimInitList", -- PrimInitList (InitList a)
+      todo "PrimErrorSet", -- PrimErrorSet (ErrorSetDecl a)
+      todo "PrimFloat", -- PrimFloat (FloatLit a)
+      todo "PrimFnProto", -- PrimFnProto (FnProto a)
+      todo "PrimGrouped", -- PrimGrouped (GroupedExpr a)
+      todo "PrimLabeledType", -- PrimLabeledType (LabeledTypeExpr a)
+      IdentifierExpr <$> pIdentifier, -- PrimId (Identifier a)
+      todo "PrimIfType", -- PrimIfType (IfTypeExpr a)
+      Int <$> pIntLit, -- PrimInt (IntLit a)
+      todo "PrimType", -- PrimType (KeywordComptime a) (TypeExpr a)
+      todo "PrimErrId", -- PrimErrId (KeywordError a) (Identifier a)
+      todo "PrimFalse", -- PrimFalse (KeywordFalse a)
+      todo "PrimNull", -- PrimNull (KeywordNull a)
+      todo "PrimAnyFrame", -- PrimAnyFrame (KeywordAnyframe a)
+      todo "PrimTrue", -- PrimTrue (KeywordTrue a)
+      todo "PrimUndefined", -- PrimUndefined (KeywordUndefined a)
+      todo "PrimUnreachable", -- PrimUnreachable (KeywordUnreachable a)
+      todo "PrimString", -- PrimString (StringLit a)
+      todo "PrimSwitch" -- PrimSwitch (SwitchExpr a)
     ]
- where
-  pContainerDecl :: Parser Expression
-  pContainerDecl = do
-    q <- optional (todo "Container Qualifier")
-    t <- pContainerDeclType
-    ms <- braces pContainerMembers
-    mkContainer q t ms
-  pContainerDeclType :: Parser ContainerType
-  pContainerDeclType =
-    choice
-      [ keyword "struct" *> (Struct <$> optional (parens pExpr))
-      , todo "ContEnum" -- ContEnum (KeywordEnum a) (Maybe (Expr a))
-      , todo "ContOpaque" -- ContOpaque (KeywordOpaque a) (Maybe (Expr a))
-      , todo "ContEmptyUnion" -- ContEmptyUnion (KeywordUnion a)
-      , todo "ContEnumUnion" -- ContEnumUnion (KeywordUnion a) (KeywordEnum a) (Maybe (Expr a))
-      , todo "ContUnion" -- ContUnion (KeywordUnion a) (Expr a)
-      ]
-  mkContainer :: Maybe ContainerQualifier -> ContainerType -> [ContainerMember] -> Parser Expression
-  mkContainer q (Struct expr) mems = StructDefExpr <$> mkStructDef q expr mems
-  mkContainer _ _ _ = fail "invalid container definition"
+  where
+    pContainerDecl :: Parser Expression
+    pContainerDecl = do
+      q <- optional (todo "Container Qualifier")
+      t <- pContainerDeclType
+      ms <- braces pContainerMembers
+      mkContainer q t ms
+    pContainerDeclType :: Parser ContainerType
+    pContainerDeclType =
+      choice
+        [ keyword "struct" *> (Struct <$> optional (parens pExpr)),
+          todo "ContEnum", -- ContEnum (KeywordEnum a) (Maybe (Expr a))
+          todo "ContOpaque", -- ContOpaque (KeywordOpaque a) (Maybe (Expr a))
+          todo "ContEmptyUnion", -- ContEmptyUnion (KeywordUnion a)
+          todo "ContEnumUnion", -- ContEnumUnion (KeywordUnion a) (KeywordEnum a) (Maybe (Expr a))
+          todo "ContUnion" -- ContUnion (KeywordUnion a) (Expr a)
+        ]
+    mkContainer :: Maybe ContainerQualifier -> ContainerType -> [ContainerMember] -> Parser Expression
+    mkContainer q (Struct expr) mems = StructDefExpr <$> mkStructDef q expr mems
+    mkContainer _ _ _ = fail "invalid container definition"
 
 mkStructDef :: Maybe ContainerQualifier -> Maybe Expression -> [ContainerMember] -> Parser StructDef
 mkStructDef Nothing Nothing ms = do
@@ -176,8 +175,8 @@ mkStructDef Nothing Nothing ms = do
   fns <- go mempty ms
   pure $
     StructDef
-      { sdField = mempty
-      , sdFunction = fns
+      { sdField = mempty,
+        sdFunction = fns
       }
 mkStructDef _ _ _ = fail "invalid container"
 
@@ -190,25 +189,25 @@ pBlock = braces (many pStatement)
 pStatement :: Parser Statement
 pStatement =
   choice
-    [ DeclarationStatement <$> pDeclaration
-    , todo "StmtComptime" -- StmtComptime (KeywordComptime a) (BlockExprStatement a)
-    , todo "StmtNoSuspend" -- StmtNoSuspend (KeywordNoSuspend a) (BlockExprStatement a)
-    , todo "StmtSuspend" -- StmtSuspend (KeywordSuspend a) (Maybe (BlockExprStatement a))
-    , todo "StmtDefer" -- StmtDefer (KeywordDefer a) (BlockExprStatement a)
-    , todo "StmtErrDefer" -- StmtErrDefer (KeywordErrdefer a) (BlockExprStatement a)
-    , todo "StmtIf" -- StmtIf (IfStatement a)
-    , todo "StmtLabeled" -- StmtLabeled (LabeledStatement a)
-    , todo "StmtSwitch" -- StmtSwitch (SwitchExpr a)
-    , pAssignExpr <* semicolon
+    [ DeclarationStatement <$> pDeclaration,
+      todo "StmtComptime", -- StmtComptime (KeywordComptime a) (BlockExprStatement a)
+      todo "StmtNoSuspend", -- StmtNoSuspend (KeywordNoSuspend a) (BlockExprStatement a)
+      todo "StmtSuspend", -- StmtSuspend (KeywordSuspend a) (Maybe (BlockExprStatement a))
+      todo "StmtDefer", -- StmtDefer (KeywordDefer a) (BlockExprStatement a)
+      todo "StmtErrDefer", -- StmtErrDefer (KeywordErrdefer a) (BlockExprStatement a)
+      todo "StmtIf", -- StmtIf (IfStatement a)
+      todo "StmtLabeled", -- StmtLabeled (LabeledStatement a)
+      todo "StmtSwitch", -- StmtSwitch (SwitchExpr a)
+      pAssignExpr <* semicolon
     ]
- where
-  pAssignExpr :: Parser Statement
-  pAssignExpr = do
-    lead <- pExpr
-    mtail <- optional (todo "AssignOp Expr")
-    pure $ case mtail of
-      Nothing -> ExpressionStatement lead
-      Just (op, val) -> AssignmentStatement lead op val
+  where
+    pAssignExpr :: Parser Statement
+    pAssignExpr = do
+      lead <- pExpr
+      mtail <- optional (todo "AssignOp Expr")
+      pure $ case mtail of
+        Nothing -> ExpressionStatement lead
+        Just (op, val) -> AssignmentStatement lead op val
 
 pDeclaration :: Parser Declaration
 pDeclaration =
@@ -241,38 +240,38 @@ pCompareExpr = do
   case x of
     Nothing -> pure e
     Just (f, e') -> f e e'
- where
-  pCompareOp = todo "comparator"
+  where
+    pCompareOp = todo "comparator"
 
 pBitwiseExpr :: Parser Expression
 pBitwiseExpr = interspersed pBitShiftExpr pBitwiseOp
- where
-  pBitwiseOp = todo "bitwiser"
+  where
+    pBitwiseOp = todo "bitwiser"
 
 pBitShiftExpr :: Parser Expression
 pBitShiftExpr = interspersed pAdditionExpr pBitShiftOp
- where
-  pBitShiftOp = todo "bitshift"
+  where
+    pBitShiftOp = todo "bitshift"
 
 pAdditionExpr :: Parser Expression
 pAdditionExpr = interspersed pMultiplyExpr pAdditionOp
- where
-  pAdditionOp = todo "addition"
+  where
+    pAdditionOp = todo "addition"
 
 pMultiplyExpr :: Parser Expression
 pMultiplyExpr = interspersed pPrefixExpr pMultiplyOp
- where
-  pMultiplyOp :: Parser (Expression -> Expression -> Expression)
-  pMultiplyOp = Mul <$ asterisk
+  where
+    pMultiplyOp :: Parser (Expression -> Expression -> Expression)
+    pMultiplyOp = Mul <$ asterisk
 
 pPrefixExpr :: Parser Expression
 pPrefixExpr = do
   fs <- many pPrefixOp
   a <- pPrimaryExpr
   pure $ foldr ($) a fs
- where
-  pPrefixOp :: Parser (Expression -> Expression)
-  pPrefixOp = todo "prefixop"
+  where
+    pPrefixOp :: Parser (Expression -> Expression)
+    pPrefixOp = todo "prefixop"
 
 -- comb <$> pa <*> many ((,) <$> pi <*> pa)
 
@@ -282,17 +281,17 @@ pPrefixExpr = do
 pPrimaryExpr :: Parser Expression
 pPrimaryExpr =
   choice
-    [ todo "asm" -- AsmExpr
-    , todo "if" -- IfExpr
-    , todo "break" -- KEYWORD_break BreakLabel? Expr?
-    , todo "comptime" -- KEYWORD_comptime Expr
-    , todo "nosuspend" -- KEYWORD_nosuspend Expr
-    , todo "continue" -- KEYWORD_continue BreakLabel?
-    , todo "resume" -- KEYWORD_resume Expr
-    , Ret <$> (keyword "return" *> optional pExpr) -- KEYWORD_return Expr?
-    , todo "block label" -- BlockLabel? LoopExpr
-    , todo "block" -- Block
-    , pCurlySuffixExpr -- CurlySuffixExpr
+    [ todo "asm", -- AsmExpr
+      todo "if", -- IfExpr
+      todo "break", -- KEYWORD_break BreakLabel? Expr?
+      todo "comptime", -- KEYWORD_comptime Expr
+      todo "nosuspend", -- KEYWORD_nosuspend Expr
+      todo "continue", -- KEYWORD_continue BreakLabel?
+      todo "resume", -- KEYWORD_resume Expr
+      Ret <$> (keyword "return" *> optional pExpr), -- KEYWORD_return Expr?
+      todo "block label", -- BlockLabel? LoopExpr
+      todo "block", -- Block
+      pCurlySuffixExpr -- CurlySuffixExpr
     ]
 
 pCurlySuffixExpr :: Parser Expression

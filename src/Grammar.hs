@@ -241,9 +241,9 @@ data IfExpr a
       (IfPrefix a)
       (Expr a)
       ( Maybe
-          ( KeywordElse a
-          , Maybe (Payload a)
-          , Expr a
+          ( KeywordElse a,
+            Maybe (Payload a),
+            Expr a
           )
       )
 
@@ -367,9 +367,9 @@ data IfTypeExpr a
       (IfPrefix a)
       (TypeExpr a)
       ( Maybe
-          ( KeywordElse a
-          , Maybe (Payload a)
-          , TypeExpr a
+          ( KeywordElse a,
+            Maybe (Payload a),
+            TypeExpr a
           )
       )
 
@@ -398,9 +398,9 @@ data WhileTypeExpr a
       (WhilePrefix a)
       (TypeExpr a)
       ( Maybe
-          ( KeywordElse a
-          , Maybe (Payload a)
-          , TypeExpr a
+          ( KeywordElse a,
+            Maybe (Payload a),
+            TypeExpr a
           )
       )
 
