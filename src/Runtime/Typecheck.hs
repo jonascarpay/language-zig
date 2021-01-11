@@ -20,21 +20,18 @@ data TypeError
   | NotAFunction Name Type
   | NoSuchFun Name
   | UnreachableCode
-
-fork :: Monad m => StateT e m a -> StateT e m a
-fork m = do
-  s <- get
-  lift $ evalStateT m s
+  | Ununifiable
+  | ArgumentLengthMismatch
 
 type Typecheck a = StateT Env (Either TypeError) a
 
 typecheck :: UProgram -> Either TypeError TProgram
 typecheck (Program prg) = Program <$> traverse (typecheckFn env0) prg
   where
-    env0 = TFunPtr . funType <$> prg
+    env0 = TFunPtr . funType snd <$> prg
 
-funType :: (decl -> Type) -> FunctionDecl decl var fun t -> FunctionType
-funType f (FunctionDecl a r _) = FunctionType (f <$> a) r
+funType :: (decl -> Type) -> FunctionDecl decl var fun info t -> FunctionType
+funType f (FunctionDecl a r _ _) = FunctionType (f <$> a) r
 
 declare :: Name -> Type -> Typecheck ()
 declare n t = do
@@ -43,20 +40,28 @@ declare n t = do
     Nothing -> put $ M.insert n t m
     Just t' -> throwError $ NameCollision n t t'
 
+-- TODO some kind of semantics
+-- TODO left/right-leaning
+-- TODO addresses?
+-- TODO Don't allow free recasting of (function) pointers
 unify :: Type -> Type -> Typecheck Type
-unify = undefined
+unify TU8 TU8 = pure TU8
+unify TVoid TVoid = pure TU8
+unify (TPtr t) (TPtr _) = pure $ TPtr t
+unify (TFunPtr t) (TFunPtr _) = pure $ TFunPtr t
+unify _ _ = throwError Ununifiable
 
 typecheckFn :: Env -> UFunctionDecl -> Either TypeError TFunctionDecl
-typecheckFn env (FunctionDecl a r (Block b)) = flip evalStateT env $ do
+typecheckFn env (FunctionDecl a r info (Scope b)) = flip evalStateT env $ do
   mapM_ (uncurry declare) a
   b' <- typecheckBlock r b
-  pure $ FunctionDecl a r (Block b')
+  pure $ FunctionDecl a r info (Scope b')
 
 typecheckBlock :: Type -> [UStatement] -> Typecheck [TStatement]
 typecheckBlock ret = go
   where
     go :: [UStatement] -> Typecheck [TStatement]
-    go (Declare n t : k) = declare n t >> (Declare n t :) <$> go k
+    go (Declare (n, t) : k) = declare n t >> (Declare (n, t) :) <$> go k
     go (Assign n expr : k) = do
       expr' <- typecheckExpr expr
       (Assign n expr' :) <$> go k
@@ -83,6 +88,12 @@ typecheckExpr (() :< MulF l r) = do
 typecheckExpr (() :< LitF v) = pure $ toType v :< LitF v
 typecheckExpr (() :< CallF fun args) = do
   gets (M.lookup fun) >>= \case
-    Just (TFunPtr (FunctionType _args ret)) -> pure $ ret :< CallF fun args
+    Just (TFunPtr (FunctionType argTypes ret)) -> do
+      when (length args /= length argTypes) $ throwError ArgumentLengthMismatch
+      args' <- forM (zip args argTypes) $ \(expr, t) -> do
+        -- TODO some kind of casting
+        _ :< ee <- typecheckExpr expr
+        pure $ t :< ee
+      pure $ ret :< CallF fun args'
     Just t -> throwError $ NotAFunction fun t
     Nothing -> throwError $ NoSuchFun fun

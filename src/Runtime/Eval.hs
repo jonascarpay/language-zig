@@ -1,11 +1,13 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Runtime.Eval where
 
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Map qualified as M
+import Data.Proxy
 import Data.Vector.Unboxed qualified as U
 import Data.Void
 import Data.Word
@@ -14,22 +16,21 @@ import Runtime.Allocate
 import Runtime.Value
 
 -- VM interface
+-- TODO make things less polymorphic
+-- TODO bulk writes? need to think about endianness
 -- TODO inline var env into AST rather than keep in frameinfo
 -- TODO Use type class for addrSize and conversion stuff
 -- TODO Maybe even for offsetting
 data VM addr var info t m = VM
-  { vmReadFunction :: addr -> m (FunctionDecl () var addr info t),
+  { vmFunction :: addr -> m (FunctionDecl Offset var addr info t),
     vmReadByte :: addr -> m Word8,
     vmWriteByte :: Word8 -> addr -> m (),
-    vmReadEbp :: m addr,
-    vmWriteEbp :: addr -> m (),
-    vmFrame :: m () -> m (),
-    -- vmPushBytes :: Bytes -> m addr,
+    vmEbp :: m addr,
+    vmPushFrame :: info -> m (),
+    vmPopFrame :: m (),
     vmOffsetPtr :: addr -> Offset -> addr,
-    vmAddrSize :: Int,
-    vmAddrEncode :: addr -> Bytes,
-    vmAddrParse :: Bytes -> addr,
-    vmReadType :: t -> Type
+    vmType :: t -> Type,
+    vmVar :: var -> Offset
   }
 
 type VMT addr var info t m a =
@@ -43,64 +44,60 @@ data VMError var addr = TypeError (Value addr) (Value addr)
 liftVM :: Monad m => m r -> VMT a v i t m r
 liftVM = lift . lift
 
-readValue :: Monad m => t -> addr -> VMT addr var info t m (Value addr)
+readValue :: forall addr var info t m. (FixedBytes addr, Monad m) => t -> addr -> VMT addr var info t m (Value addr)
 readValue t' base = do
   VM {..} <- ask
-  let t = vmReadType t'
-  let n = typeBytes vmAddrSize t
+  let t = vmType t'
+  let n = typeBytes (byteSize (Proxy :: Proxy addr)) t
   bs <- liftVM $ U.generateM n $ vmReadByte . vmOffsetPtr base
-  pure $ fromBytes vmAddrParse t (Bytes bs)
+  pure $ decodeValue t (Bytes bs)
 
-writeValue :: Monad m => Value addr -> addr -> VMT addr var info t m ()
+writeValue :: (FixedBytes addr, Monad m) => Value addr -> addr -> VMT addr var info t m ()
 writeValue v base = do
   VM {..} <- ask
-  let Bytes bytes = toBytes vmAddrEncode v
+  let Bytes bytes = encodeValue v
   liftVM $ flip U.imapM_ bytes $ \off b -> vmWriteByte b (vmOffsetPtr base off)
 
-readLocalValue :: Monad m => t -> Offset -> VMT a v i t m (Value a)
-readLocalValue t off = do
-  VM {..} <- ask
-  ebp <- liftVM vmReadEbp
-  readValue t (vmOffsetPtr ebp off)
-
--- TODO addr should be fun
-frame ::
-  [Value addr] ->
-  i ->
-  ((v -> VMT addr v i t m addr) -> VMT addr v i t m r) ->
-  VMT addr v i t m r
-frame = undefined
-
-call :: Monad m => [Value addr] -> addr -> VMT addr v i t m (Value addr)
+call :: (FixedBytes addr, Monad m) => [Value addr] -> addr -> VMT addr v i t m (Value addr)
 call args addr = do
   VM {..} <- ask
-  FunctionDecl {..} <- liftVM $ vmReadFunction addr
-  frame args funInfo $ \getVar -> evalStatement getVar (unScope funBody)
+  FunctionDecl {..} <- liftVM $ vmFunction addr
+  liftVM $ vmPushFrame funInfo
+  forM_ (zip args funArgs) $ \(v, off) ->
+    readOffset off >>= writeValue v
+  evalStatement (unScope funBody)
+
+readOffset :: Monad m => Offset -> VMT a v i t m a
+readOffset off = do
+  base <- asks vmEbp >>= liftVM
+  f <- asks vmOffsetPtr
+  pure $ f base off
+
+readVar :: Monad m => v -> VMT a v i t m a
+readVar var = ask >>= readOffset . ($var) . vmVar
 
 evalStatement ::
-  Monad m =>
-  (v -> VMT addr v i t m addr) ->
+  (FixedBytes addr, Monad m) =>
   [Statement decl v addr t] ->
   VMT addr v i t m (Value addr)
-evalStatement getVar = go
+evalStatement = go
   where
     go [] = pure VVoid
-    go (Return e : _) = evalExpr getVar e
+    go (Return e : _) = evalExpr e
     go (Declare _ : k) = go k
     go (Assign var e : k) = do
-      val <- evalExpr getVar e
-      addr <- getVar var
+      addr <- readVar var
+      val <- evalExpr e
       writeValue val addr
       go k
 
 -- TODO after type checking, types only matter when reading values?
 -- If so, just put them in the var?
 evalExpr ::
-  Monad m =>
-  (v -> VMT addr v i t m addr) ->
+  (FixedBytes addr, Monad m) =>
   Expr v addr t ->
   VMT addr v i t m (Value addr)
-evalExpr getVar = go
+evalExpr = go
   where
     go (t :< MulF l r) = do
       l' <- go l
@@ -109,7 +106,7 @@ evalExpr getVar = go
         (VU8 ul, VU8 ur) -> pure $ VU8 (ul * ur)
         (a, b) -> throwError $ TypeError a b
     go (t :< LitF v) = pure $ absurd <$> v
-    go (t :< VarF var) = getVar var >>= readValue t
+    go (t :< VarF var) = readVar var >>= readValue t
     go (t :< CallF addr args) = do
       args' <- traverse go args
       call args' addr

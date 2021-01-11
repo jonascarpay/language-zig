@@ -12,20 +12,37 @@ import Control.Monad.ST
 import Data.Map (Map)
 import Data.STRef
 import Data.Vector qualified as V
-import Data.Vector.Unboxed qualified as U
 import Data.Vector.Unboxed.Mutable qualified as UM
 import Data.Word
-import Runtime.Program
+import Runtime.AST
+import Runtime.Allocate
+import Runtime.Eval
 import Runtime.Value
 
-data VMState s = VMState
-  { programMemory :: V.Vector (FunctionDecl Type),
+data STVMState s = STVMState
+  { programMemory :: V.Vector FunDecl',
     stackMemory :: UM.STVector s Word8,
-    esp :: STRef s Word,
-    ebp :: STRef s Word
+    esp :: STRef s Address,
+    ebp :: STRef s Address
   }
 
-data VMError
+interface :: VM Address Offset (FrameInfo ()) Type (STVM s)
+interface =
+  VM
+    { vmFunction = readFunction, -- :: addr -> m (FunctionDecl Offset var addr info t),
+      vmReadByte = readByte, -- :: addr -> m Word8,
+      vmWriteByte = writeByte, -- :: Word8 -> addr -> m (),
+      vmEbp = STVM $ asks esp >>= lift . lift . readSTRef, -- :: m addr,
+      vmPushFrame = pushFrame, -- :: info -> m (),
+      vmPopFrame = popFrame, -- :: m (),
+      vmOffsetPtr = \base off -> base + fromIntegral off, -- :: addr -> Offset -> addr,
+      vmType = id, -- :: t -> Type,
+      vmVar = id -- :: var -> Offset
+    }
+
+type FunDecl' = FunctionDecl Offset Offset Address (FrameInfo ()) Type
+
+data STVMError
   = NotAFunctionAddr Address
   | OOBRead
   | OOBWrite
@@ -33,20 +50,26 @@ data VMError
 
 type Env = Map Name Address
 
--- Naturally, Env goes in the StateT and VMState goes in the ReaderT
-type STVM s a =
-  ExceptT
-    VMError
-    (RWST (VMState s) () Env (ST s))
-    a
+pushFrame :: FrameInfo () -> STVM s ()
+pushFrame = undefined
 
-liftST :: ST s a -> STVM s a
-liftST = lift . lift
+popFrame :: STVM s ()
+popFrame = undefined
+
+-- Naturally, Env goes in the StateT and VMState goes in the ReaderT
+newtype STVM s a = STVM
+  { unSTVM ::
+      ExceptT
+        STVMError
+        (RWST (STVMState s) () Env (ST s))
+        a
+  }
+  deriving (Functor, Applicative, Monad)
 
 type Address = Word
 
-readFunction :: Address -> STVM s (FunctionDecl Type)
-readFunction addr = do
+readFunction :: Address -> STVM s FunDecl'
+readFunction addr = STVM $ do
   pmem <- asks programMemory
   case pmem V.!? fromIntegral addr of
     Nothing -> throwError $ NotAFunctionAddr addr
@@ -57,19 +80,19 @@ unstack addr = fromIntegral (maxBound - addr)
 
 -- TODO: proper memory mapping
 -- TODO: should bytes written to the stack be in reverse order?
-readBytes :: Int -> Address -> STVM s Bytes
-readBytes n addr = do
+readByte :: Address -> STVM s Word8
+readByte addr = STVM $ do
   let addr' = unstack addr
   stack <- asks stackMemory
-  if addr' + n > UM.length stack
+  if addr' > UM.length stack
     then throwError OOBRead
-    else Bytes <$> liftST (U.generateM n $ \i -> UM.read stack (addr' + i))
+    else UM.read stack $ fromIntegral addr
 
 -- TODO: see notes for readBytes
-writeBytes :: Address -> Bytes -> STVM s ()
-writeBytes addr (Bytes bytes) = do
+writeByte :: Word8 -> Address -> STVM s ()
+writeByte byte addr = STVM $ do
   let addr' = unstack addr
   stack <- asks stackMemory
-  if addr' + U.length bytes > UM.length stack
+  if addr' > UM.length stack
     then throwError OOBWrite
-    else liftST $ U.imapM_ (\i -> UM.write stack (addr' + i)) bytes
+    else UM.write stack addr' byte

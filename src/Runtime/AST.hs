@@ -50,9 +50,9 @@ newtype Program decl var fun finfo t = Program {progFunctions :: Map Name (Funct
 
 type Expr var fun t = t :< ExprF var fun
 
-type UExpr = Expr (Name, Type) Name ()
+type UExpr = Expr Name Name ()
 
-type TExpr = Expr (Name, Type) Name Type
+type TExpr = Expr Name Name Type
 
 type UStatement = Statement (Name, Type) Name Name ()
 
@@ -76,6 +76,7 @@ pattern Mul l r = () :< MulF l r
 pattern Lit :: Word8 -> Expr var fun ()
 pattern Lit n = () :< LitF (VU8 n)
 
+-- TODO make this a test case
 ret143 :: UProgram
 ret143 = Program $ M.singleton "main" main
   where
