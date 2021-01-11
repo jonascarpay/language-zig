@@ -3,7 +3,6 @@
 
 module Runtime.Value where
 
-import Control.Monad.Except
 import Data.Vector.Unboxed qualified as U
 import Data.Word
 
@@ -54,17 +53,13 @@ toBytes _ VVoid = Bytes U.empty
 toBytes f (VPtr addr) = f addr
 
 fromBytes ::
-  (Bytes -> Either DeserializeError addr) ->
-  Int ->
+  (Bytes -> addr) ->
   Type ->
   Bytes ->
-  Either DeserializeError (Value addr)
-fromBytes _ addr t (Bytes bs)
-  | typeBytes addr t /= U.length bs =
-    throwError $ ByteLengthMismatch t (typeBytes addr t) (U.length bs)
-fromBytes _ _ TVoid _ = pure VVoid
-fromBytes _ _ TU8 (Bytes bs) = pure $ VU8 (U.head bs)
-fromBytes f _ (TPtr _) bs = VPtr <$> f bs
-fromBytes f _ (TFunPtr _) bs = VPtr <$> f bs
+  Value addr
+fromBytes _ TVoid _ = VVoid
+fromBytes _ TU8 (Bytes bs) = VU8 (U.head bs)
+fromBytes f (TPtr _) bs = VPtr $ f bs
+fromBytes f (TFunPtr _) bs = VPtr $ f bs
 
 data DeserializeError = ByteLengthMismatch Type Int Int

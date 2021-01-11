@@ -45,26 +45,29 @@ traverseDeclsOrdered margs mdecl (FunctionDecl args ret info (Scope b)) =
 
 newtype AllocError name = UnknownReference name
 
-data FrameInfo name = FrameInfo
-  { stackBottom :: Offset, -- more positive
-    stackTop :: Offset, -- less positive
-    stackLayout :: Map name Offset
+data FrameInfo symbol = FrameInfo
+  { stackArgsize :: Offset, -- more positive
+    stackFramesize :: Offset, -- less positive
+    stackLayout :: Map symbol Offset
   }
 
--- TODO better interface (flexibility in ret addr, ebp, etc)
-allocate ::
-  forall decl var fun info t name.
-  Ord name =>
-  (decl -> Int) ->
-  (decl -> name) ->
-  FunctionDecl decl var fun info t ->
-  FrameInfo name
-allocate fWidth fdecl fun = execState (traverseDeclsOrdered pushBot pushTop fun) (FrameInfo 0 0 mempty)
-  where
-    pushBot :: decl -> State (FrameInfo name) (decl, Offset)
-    pushBot decl = state $ \(FrameInfo b t env) -> ((decl, b), FrameInfo (b + fWidth decl) t (M.insert (fdecl decl) b env))
-    pushTop :: decl -> State (FrameInfo name) (decl, Offset)
-    pushTop decl = state $ \(FrameInfo b t env) -> let off = t + fWidth decl in ((decl, off), FrameInfo b off (M.insert (fdecl decl) off env))
+-- -- TODO better interface (flexibility in ret addr, ebp, etc)
+-- allocate ::
+--   forall decl var fun info t sym.
+--   Ord sym =>
+--   (decl -> Int) ->
+--   (decl -> sym) ->
+--   Offset ->
+--   Offset ->
+--   FunctionDecl decl var fun info t ->
+--   FrameInfo sym
+-- allocate fWidth fdecl argbuf framebuf fun =
+--   execState (traverseDeclsOrdered pushBot pushTop fun) (FrameInfo argbuf framebuf mempty)
+--   where
+--     pushBot :: decl -> State (FrameInfo sym) (decl, Offset)
+--     pushBot decl = state $ \(FrameInfo b t env) -> ((decl, b), FrameInfo (b + fWidth decl) t (M.insert (fdecl decl) b env))
+--     pushTop :: decl -> State (FrameInfo sym) (decl, Offset)
+--     pushTop decl = state $ \(FrameInfo b t env) -> let off = t + fWidth decl in ((decl, off), FrameInfo b off (M.insert (fdecl decl) off env))
 
 -- -- TODO don't/separately traverse  vars, they're only being substituted here
 -- allocate ::

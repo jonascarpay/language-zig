@@ -33,7 +33,7 @@ data FunctionDecl decl var fun finfo t = FunctionDecl
     funBody :: Scope decl var fun t
   }
 
-newtype Scope d v f t = Scope [Statement d v f t]
+newtype Scope d v f t = Scope {unScope :: [Statement d v f t]}
 
 data ExprF var fun e
   = MulF e e
