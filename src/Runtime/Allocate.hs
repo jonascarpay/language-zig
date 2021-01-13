@@ -46,60 +46,34 @@ traverseDeclsOrdered margs mdecl (FunctionDecl args ret info (Scope b)) =
 newtype AllocError name = UnknownReference name
 
 data FrameInfo symbol = FrameInfo
-  { stackArgsize :: Offset, -- more positive
-    stackFramesize :: Offset, -- less positive
+  { stackBottom :: Word, -- Size of allocations below 0
+    stackTop :: Word, -- Size of allocations above 0
     stackLayout :: Map symbol Offset
   }
 
--- -- TODO better interface (flexibility in ret addr, ebp, etc)
--- allocate ::
---   forall decl var fun info t sym.
---   Ord sym =>
---   (decl -> Int) ->
---   (decl -> sym) ->
---   Offset ->
---   Offset ->
---   FunctionDecl decl var fun info t ->
---   FrameInfo sym
--- allocate fWidth fdecl argbuf framebuf fun =
---   execState (traverseDeclsOrdered pushBot pushTop fun) (FrameInfo argbuf framebuf mempty)
---   where
---     pushBot :: decl -> State (FrameInfo sym) (decl, Offset)
---     pushBot decl = state $ \(FrameInfo b t env) -> ((decl, b), FrameInfo (b + fWidth decl) t (M.insert (fdecl decl) b env))
---     pushTop :: decl -> State (FrameInfo sym) (decl, Offset)
---     pushTop decl = state $ \(FrameInfo b t env) -> let off = t + fWidth decl in ((decl, off), FrameInfo b off (M.insert (fdecl decl) off env))
+frameSize :: FrameInfo sym -> Word
+frameSize (FrameInfo bot top _) = top + bot
 
--- -- TODO don't/separately traverse  vars, they're only being substituted here
--- allocate ::
---   forall decl var fun t name.
---   Ord name =>
---   (decl -> Int) ->
---   (decl -> name) ->
---   (var -> name) ->
---   FunctionDecl decl var fun t ->
---   Either (AllocError name) (FunctionDecl (decl, Offset) (var, Offset) fun t)
--- allocate fWidth fdecl fvar fun = evalStateT (traverseVars pushBot pushTop getVar fun) (AllocState 0 0 mempty)
---   where
---     pushBot :: decl -> StateT (AllocState name) (Either (AllocError name)) (decl, Offset)
---     pushBot decl = state $ \(AllocState b t env) -> ((decl, b), AllocState (b + fWidth decl) t (M.insert (fdecl decl) b env))
---     pushTop :: decl -> StateT (AllocState name) (Either (AllocError name)) (decl, Offset)
---     pushTop decl = state $ \(AllocState b t env) -> let off = t + fWidth decl in ((decl, off), AllocState b off (M.insert (fdecl decl) off env))
---     getVar :: var -> StateT (AllocState name) (Either (AllocError name)) (var, Offset)
---     getVar var =
---       gets stackEnv >>= \env -> case M.lookup name env of
---         Nothing -> throwError $ UnknownReference name
---         Just off -> pure (var, off)
---       where
---         name = fvar var
-
--- allocFn :: forall decl var fun t. Ord decl => (Type -> Int) -> FunctionDecl decl var fun t -> FunctionDecl Offset Offset fun t
--- allocFn f (FunctionDecl args _ (Block b)) = FunctionDecl  go (env0 mempty 0 args) 0 b
---   where
---     env0 :: -> Int -> [(decl, Type)] -> State (FrameEnv decl) Map decl Int
---     env0 e _ [] = e
---     env0 e off ((v, t) : as) = env0 (M.insert v off e) (off + f t) as
---     go :: State FrameEnv (Block Offset Offset fun t)
---     go = undefined
+-- | Default allocator
+-- Function arguments go at the bottom, local declarations at the top.
+-- The bottom is the more negative address.
+allocate ::
+  forall decl var fun info t.
+  Ord decl =>
+  -- | Size in bytes of an allocation
+  (decl -> Word) ->
+  -- | Buffer below the base
+  Word ->
+  -- | Buffer above the base
+  Word ->
+  FunctionDecl decl var fun info t ->
+  FrameInfo decl
+allocate fBytes bot0 top0 fun = execState (traverseDeclsOrdered registerArg registerLoc fun) (FrameInfo bot0 top0 mempty)
+  where
+    registerArg :: decl -> State (FrameInfo decl) ()
+    registerArg decl = modify $ \(FrameInfo b t l) -> FrameInfo (b + fBytes decl) t (M.insert decl (fromIntegral $ - b) l)
+    registerLoc :: decl -> State (FrameInfo decl) ()
+    registerLoc decl = modify $ \(FrameInfo b t l) -> let t' = t + fBytes decl in FrameInfo b t' (M.insert decl (fromIntegral t') l)
 
 -- more postive
 --   Arguments

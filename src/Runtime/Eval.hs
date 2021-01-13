@@ -27,7 +27,7 @@ data VM addr var info t m = VM
     vmWriteByte :: Word8 -> addr -> m (),
     vmEbp :: m addr,
     vmPushFrame :: info -> m (),
-    vmPopFrame :: m (),
+    vmPopFrame :: info -> m (),
     vmOffsetPtr :: addr -> Offset -> addr,
     vmType :: t -> Type,
     vmVar :: var -> Offset
@@ -44,16 +44,16 @@ data VMError var addr = TypeError (Value addr) (Value addr)
 liftVM :: Monad m => m r -> VMT a v i t m r
 liftVM = lift . lift
 
-readValue :: forall addr var info t m. (FixedBytes addr, Monad m) => t -> addr -> VMT addr var info t m (Value addr)
-readValue t' base = do
+readValue' :: forall addr var info t m. (FixedBytes addr, Monad m) => t -> addr -> VMT addr var info t m (Value addr)
+readValue' t' base = do
   VM {..} <- ask
   let t = vmType t'
   let n = typeBytes (byteSize (Proxy :: Proxy addr)) t
   bs <- liftVM $ U.generateM n $ vmReadByte . vmOffsetPtr base
   pure $ decodeValue t (Bytes bs)
 
-writeValue :: (FixedBytes addr, Monad m) => Value addr -> addr -> VMT addr var info t m ()
-writeValue v base = do
+writeValue' :: (FixedBytes addr, Monad m) => Value addr -> addr -> VMT addr var info t m ()
+writeValue' v base = do
   VM {..} <- ask
   let Bytes bytes = encodeValue v
   liftVM $ flip U.imapM_ bytes $ \off b -> vmWriteByte b (vmOffsetPtr base off)
@@ -64,7 +64,7 @@ call args addr = do
   FunctionDecl {..} <- liftVM $ vmFunction addr
   liftVM $ vmPushFrame funInfo
   forM_ (zip args funArgs) $ \(v, off) ->
-    readOffset off >>= writeValue v
+    readOffset off >>= writeValue' v
   evalStatement (unScope funBody)
 
 readOffset :: Monad m => Offset -> VMT a v i t m a
@@ -88,7 +88,7 @@ evalStatement = go
     go (Assign var e : k) = do
       addr <- readVar var
       val <- evalExpr e
-      writeValue val addr
+      writeValue' val addr
       go k
 
 -- TODO after type checking, types only matter when reading values?
@@ -106,7 +106,7 @@ evalExpr = go
         (VU8 ul, VU8 ur) -> pure $ VU8 (ul * ur)
         (a, b) -> throwError $ TypeError a b
     go (t :< LitF v) = pure $ absurd <$> v
-    go (t :< VarF var) = readVar var >>= readValue t
+    go (t :< VarF var) = readVar var >>= readValue' t
     go (t :< CallF addr args) = do
       args' <- traverse go args
       call args' addr

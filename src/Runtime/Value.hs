@@ -58,22 +58,28 @@ class FixedBytes a where
   byteSize _ =
     let bits = finiteBitSize (error "byteSize: finiteBitSize evaluated argument" :: a)
      in div (bits + 7) 8
+  {-# INLINE byteSize #-}
+
   toBytes :: a -> Bytes
   default toBytes :: (FiniteBits a, Integral a) => a -> Bytes
   toBytes a =
     let n = byteSize (Proxy :: Proxy a)
      in Bytes $ U.generate n $ \i -> fromIntegral (shiftR a (i * 8))
+  {-# INLINE toBytes #-}
 
   -- | implementations are allowed to error if there are not enough/too many
   --   bytes, but it is probably better to assume 0-padding.
   fromBytes :: Bytes -> a
   default fromBytes :: (FiniteBits a, Integral a) => Bytes -> a
   fromBytes (Bytes bs) = U.ifoldr (\i b a -> a .&. shiftL (fromIntegral b) (i * 8)) zeroBits bs
+  {-# INLINE fromBytes #-}
 
 instance FixedBytes Word8 where
   byteSize _ = 1
   toBytes = Bytes . U.singleton
   fromBytes (Bytes bs) = U.head bs
+
+instance FixedBytes Word
 
 instance FixedBytes () where
   byteSize _ = 0
@@ -90,3 +96,19 @@ decodeValue TVoid _ = VVoid
 decodeValue TU8 bs = VU8 $ fromBytes bs
 decodeValue (TPtr _) bs = VPtr $ fromBytes bs
 decodeValue (TFunPtr _) bs = VPtr $ fromBytes bs
+
+{-# INLINE writeBytes #-}
+writeBytes :: Monad m => (Word8 -> Int -> m ()) -> Bytes -> Int -> m ()
+writeBytes fbyte (Bytes bytes) base = flip U.imapM_ bytes $ \off byte -> fbyte byte (base + off)
+
+{-# INLINE writeValue #-}
+writeValue :: (FixedBytes x, Monad m) => (Word8 -> Int -> m ()) -> x -> Int -> m ()
+writeValue fbyte = writeBytes fbyte . toBytes
+
+{-# INLINE readBytes #-}
+readBytes :: Monad m => (Int -> m Word8) -> Int -> Int -> m Bytes
+readBytes fbyte n base = fmap Bytes . U.generateM n $ \off -> fbyte (base + off)
+
+{-# INLINE readValue #-}
+readValue :: forall m x. (FixedBytes x, Monad m) => (Int -> m Word8) -> Int -> m x
+readValue fbyte = fmap fromBytes . readBytes fbyte (byteSize (Proxy :: Proxy x))

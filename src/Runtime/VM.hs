@@ -3,6 +3,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Runtime.VM where
 
@@ -50,11 +51,22 @@ data STVMError
 
 type Env = Map Name Address
 
-pushFrame :: FrameInfo () -> STVM s ()
-pushFrame = undefined
+pushFrame :: FrameInfo decl -> STVM s ()
+pushFrame (FrameInfo wbot wtop _) = STVM $ do
+  ebpOld <- asks ebp >>= lift . lift . readSTRef
+  espOld <- asks esp >>= lift . lift . readSTRef
+  let ebpNew = espOld + wbot
+      espNew = ebpNew + wtop
+  writeValue (\b i -> unSTVM $ writeByte b (fromIntegral i)) ebpOld (fromIntegral ebpNew)
+  asks ebp >>= lift . lift . flip writeSTRef ebpNew
+  asks esp >>= lift . lift . flip writeSTRef espNew
 
-popFrame :: STVM s ()
-popFrame = undefined
+popFrame :: FrameInfo decl -> STVM s ()
+popFrame (FrameInfo wbot wtop _) = STVM $ do
+  ebpNew <- asks ebp >>= lift . lift . readSTRef
+  ebpOld <- readValue (unSTVM . readByte . fromIntegral) (fromIntegral ebpNew)
+  asks esp >>= lift . lift . flip writeSTRef (ebpNew - wbot)
+  asks ebp >>= lift . lift . flip writeSTRef ebpOld
 
 -- Naturally, Env goes in the StateT and VMState goes in the ReaderT
 newtype STVM s a = STVM
