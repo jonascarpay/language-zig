@@ -3,9 +3,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
+import Test.Eval
 import Test.Parse
 import Test.Tasty
-import Test.Value
 
 main :: IO ()
 main = do
@@ -15,5 +15,5 @@ main = do
       "tests"
       [ simpleParsing,
         ftests,
-        valueTests
+        evalTests
       ]

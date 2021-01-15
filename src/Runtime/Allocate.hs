@@ -4,12 +4,10 @@
 module Runtime.Allocate where
 
 import Control.Applicative
-import Control.Monad.Except
 import Control.Monad.State
 import Data.Map
 import Data.Map qualified as M
 import Runtime.AST
-import Runtime.Value
 
 type Offset = Int
 
@@ -58,22 +56,26 @@ frameSize (FrameInfo bot top _) = top + bot
 -- Function arguments go at the bottom, local declarations at the top.
 -- The bottom is the more negative address.
 allocate ::
-  forall decl var fun info t.
-  Ord decl =>
+  forall decl symbol var fun info t.
+  Ord symbol =>
   -- | Size in bytes of an allocation
   (decl -> Word) ->
+  (decl -> symbol) ->
   -- | Buffer below the base
   Word ->
   -- | Buffer above the base
   Word ->
   FunctionDecl decl var fun info t ->
-  FrameInfo decl
-allocate fBytes bot0 top0 fun = execState (traverseDeclsOrdered registerArg registerLoc fun) (FrameInfo bot0 top0 mempty)
+  FrameInfo symbol
+allocate fBytes fSym bot0 top0 fun = execState (traverseDeclsOrdered registerArg registerLoc fun) (FrameInfo bot0 top0 mempty)
   where
-    registerArg :: decl -> State (FrameInfo decl) ()
-    registerArg decl = modify $ \(FrameInfo b t l) -> FrameInfo (b + fBytes decl) t (M.insert decl (fromIntegral $ - b) l)
-    registerLoc :: decl -> State (FrameInfo decl) ()
-    registerLoc decl = modify $ \(FrameInfo b t l) -> let t' = t + fBytes decl in FrameInfo b t' (M.insert decl (fromIntegral t') l)
+    registerArg :: decl -> State (FrameInfo symbol) ()
+    registerArg decl = modify $ \(FrameInfo b t l) ->
+      FrameInfo (b + fBytes decl) t (M.insert (fSym decl) (fromIntegral $ negate b) l)
+    registerLoc :: decl -> State (FrameInfo symbol) ()
+    registerLoc decl = modify $ \(FrameInfo b t l) ->
+      let t' = t + fBytes decl
+       in FrameInfo b t' (M.insert (fSym decl) (fromIntegral t') l)
 
 -- more postive
 --   Arguments

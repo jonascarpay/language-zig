@@ -10,7 +10,6 @@
 module Runtime.AST where
 
 import Data.Map (Map)
-import Data.Map qualified as M
 import Data.Void
 import Data.Word
 import Runtime.Value
@@ -76,13 +75,6 @@ pattern Mul l r = () :< MulF l r
 pattern Lit :: Word8 -> Expr var fun ()
 pattern Lit n = () :< LitF (VU8 n)
 
--- TODO make this a test case
-ret143 :: UProgram
-ret143 = Program $ M.singleton "main" main
-  where
-    main :: UFunctionDecl
-    main = FunctionDecl [] TU8 () (Scope [Return (11 * 13)])
-
 type Traversal s t a b = forall m. Applicative m => (a -> m b) -> (s -> m t)
 
 exprVars :: Traversal (Expr v f t) (Expr v' f t) v v'
@@ -93,6 +85,14 @@ exprVars f = go
     go (t :< CallF fun e) = (\e' -> t :< CallF fun e') <$> traverse go e
     go (t :< MulF l r) = (\l' r' -> t :< MulF l' r') <$> go l <*> go r
 
+exprFuns :: Traversal (Expr v f t) (Expr v f' t) f f'
+exprFuns f = go
+  where
+    go (t :< VarF v) = pure $ t :< VarF v
+    go (t :< LitF v) = pure $ t :< LitF v
+    go (t :< CallF fun e) = (\fun' e' -> t :< CallF fun' e') <$> f fun <*> traverse go e
+    go (t :< MulF l r) = (\l' r' -> t :< MulF l' r') <$> go l <*> go r
+
 statementVars :: Traversal (Statement d v f t) (Statement d v' f t) v v'
 statementVars f = go
   where
@@ -100,5 +100,26 @@ statementVars f = go
     go (Return e) = Return <$> exprVars f e
     go (Assign v e) = Assign <$> f v <*> exprVars f e
 
+statementFuns :: Traversal (Statement d v f t) (Statement d v f' t) f f'
+statementFuns f = go
+  where
+    go (Declare d) = pure $ Declare d
+    go (Return e) = Return <$> exprFuns f e
+    go (Assign v e) = Assign v <$> exprFuns f e
+
+statementDecls :: Traversal (Statement d v f t) (Statement d' v f t) d d'
+statementDecls f = go
+  where
+    go (Declare d) = Declare <$> f d
+    go (Return e) = pure $ Return e
+    go (Assign v e) = pure $ Assign v e
+
 functionDeclVars :: Traversal (FunctionDecl d v f fi t) (FunctionDecl d v' f fi t) v v'
 functionDeclVars f (FunctionDecl a r i (Scope b)) = FunctionDecl a r i . Scope <$> (traverse . statementVars) f b
+
+functionDeclFuns :: Traversal (FunctionDecl d v f fi t) (FunctionDecl d v f' fi t) f f'
+functionDeclFuns f (FunctionDecl a r i (Scope b)) = FunctionDecl a r i . Scope <$> (traverse . statementFuns) f b
+
+functionDeclDecls :: Traversal (FunctionDecl d v f fi t) (FunctionDecl d' v f fi t) d d'
+functionDeclDecls f (FunctionDecl a r i (Scope b)) =
+  (\a' b' -> FunctionDecl a' r i (Scope b')) <$> traverse f a <*> (traverse . statementDecls) f b

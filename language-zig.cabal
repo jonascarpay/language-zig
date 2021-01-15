@@ -76,6 +76,7 @@ test-suite language-zig-test
     , mtl
     , parser-combinators
     , tasty
+    , tasty-focus
     , tasty-hunit
     , tasty-quickcheck
     , vector
@@ -83,8 +84,8 @@ test-suite language-zig-test
   -- vector, mtl, containers, parser-combinators is not actually used, see hack
   ghc-options:    -threaded -rtsopts -with-rtsopts=-N
   other-modules:
+    Test.Eval
     Test.Parse
-    Test.Value
 
 benchmark language-zig-bench
   import:         common-options

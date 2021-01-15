@@ -22,6 +22,7 @@ data TypeError
   | UnreachableCode
   | Ununifiable
   | ArgumentLengthMismatch
+  deriving (Show)
 
 type Typecheck a = StateT Env (Either TypeError) a
 

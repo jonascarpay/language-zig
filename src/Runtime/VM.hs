@@ -62,7 +62,7 @@ pushFrame (FrameInfo wbot wtop _) = STVM $ do
   asks esp >>= lift . lift . flip writeSTRef espNew
 
 popFrame :: FrameInfo decl -> STVM s ()
-popFrame (FrameInfo wbot wtop _) = STVM $ do
+popFrame (FrameInfo wbot _ _) = STVM $ do
   ebpNew <- asks ebp >>= lift . lift . readSTRef
   ebpOld <- readValue (unSTVM . readByte . fromIntegral) (fromIntegral ebpNew)
   asks esp >>= lift . lift . flip writeSTRef (ebpNew - wbot)
