@@ -32,7 +32,7 @@ data Value addr
   = VU8 Word8
   | VVoid
   | VPtr addr
-  deriving (Functor, Foldable, Traversable)
+  deriving (Eq, Show, Functor, Foldable, Traversable)
 
 -- Any pointer is a void pointer
 toType :: Value addr -> Type

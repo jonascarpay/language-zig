@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -11,6 +12,7 @@ import Control.Monad.Except
 import Control.Monad.RWS
 import Control.Monad.ST
 import Data.Map (Map)
+import Data.Map qualified as M
 import Data.STRef
 import Data.Vector qualified as V
 import Data.Vector.Unboxed.Mutable qualified as UM
@@ -27,7 +29,22 @@ data STVMState s = STVMState
     ebp :: STRef s Address
   }
 
-interface :: VM Address Offset (FrameInfo ()) Type (STVM s)
+type CheckedProgam = Program Offset Offset Address (FrameInfo Name) Type
+
+compile :: CheckedProgam -> (V.Vector FunDecl', Map Name Address)
+compile (Program prog) =
+  let (names, funs) = unzip $ M.toList prog
+   in (V.fromList funs, M.fromList $ zip names [0 ..])
+
+vmState0 :: V.Vector FunDecl' -> ST s (STVMState s)
+vmState0 programMemory = do
+  esp <- newSTRef 0
+  ebp <- newSTRef 0
+  stackMemory <- UM.replicate 0xFF 0
+  pure $ STVMState {..}
+
+-- TODO should function names just be addresses?
+interface :: VM Address Offset (FrameInfo Name) Type (STVM s)
 interface =
   VM
     { vmFunction = readFunction, -- :: addr -> m (FunctionDecl Offset var addr info t),
@@ -41,13 +58,22 @@ interface =
       vmVar = id -- :: var -> Offset
     }
 
-type FunDecl' = FunctionDecl Offset Offset Address (FrameInfo ()) Type
+type FunDecl' = FunctionDecl Offset Offset Address (FrameInfo Name) Type
+
+-- TODO be smarter about (un/re)lifting
+runSTVM :: V.Vector FunDecl' -> STVM s a -> ExceptT STVMError (ST s) a
+runSTVM prog (STVM m) = do
+  (r, _, _) <- lift $ do
+    stateInit <- vmState0 prog
+    runRWST (runExceptT m) stateInit mempty
+  liftEither r
 
 data STVMError
   = NotAFunctionAddr Address
   | OOBRead
   | OOBWrite
   | SegFault
+  deriving (Eq, Show)
 
 type Env = Map Name Address
 
@@ -68,6 +94,8 @@ popFrame (FrameInfo wbot _ _) = STVM $ do
   asks esp >>= lift . lift . flip writeSTRef (ebpNew - wbot)
   asks ebp >>= lift . lift . flip writeSTRef ebpOld
 
+-- TODO get rid of the Env?
+-- TODO Moving the ExceptT inside makes composition easier since everything runs in an exceptT, but makes conserving state harder?
 -- Naturally, Env goes in the StateT and VMState goes in the ReaderT
 newtype STVM s a = STVM
   { unSTVM ::

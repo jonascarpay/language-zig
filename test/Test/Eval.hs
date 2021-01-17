@@ -2,16 +2,20 @@ module Test.Eval where
 
 import Control.Monad
 import Control.Monad.Error
+import Control.Monad.Except
+import Control.Monad.ST
 import Control.Monad.State
 import Data.Bifunctor
 import Data.Map
 import Data.Map qualified as M
 import Runtime.AST
 import Runtime.Allocate
+import Runtime.Eval
 import Runtime.Typecheck
 import Runtime.VM
 import Runtime.Value
 import Test.Tasty
+import Test.Tasty.HUnit
 
 ret143 :: UProgram
 ret143 = Program $ M.singleton "main" main
@@ -42,8 +46,15 @@ vmAllocate (Program env) = Program <$> traverse f env
 runProgram :: UProgram -> Either String (Value Word)
 runProgram uprog = do
   tprog <- first show $ typecheck uprog
-  let aprog = vmAllocate tprog
-  undefined
+  aprog <- vmAllocate tprog
+  let (vprog, symbols) = compile aprog
+  mainAddr <- maybe (throwError "no main") pure $ M.lookup "main" symbols
+  ret <- first show $ runST $ runExceptT $ runSTVM vprog $ runEval interface $ call [] mainAddr
+  first show ret
 
 evalTests :: TestTree
-evalTests = undefined
+evalTests =
+  testGroup
+    "Eval"
+    [ testCase "143" $ runProgram ret143 @?= Right (VU8 143)
+    ]

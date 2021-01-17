@@ -39,7 +39,11 @@ type VMT addr var info t m a =
     (ReaderT (VM addr var info t m) m)
     a
 
+runEval :: VM addr var info t m -> VMT addr var info t m a -> m (Either (VMError var addr) a)
+runEval vm m = runReaderT (runExceptT m) vm
+
 data VMError var addr = TypeError (Value addr) (Value addr)
+  deriving (Show)
 
 liftVM :: Monad m => m r -> VMT a v i t m r
 liftVM = lift . lift
