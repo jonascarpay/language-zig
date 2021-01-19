@@ -4,6 +4,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module Runtime.VM where
@@ -13,6 +14,7 @@ import Control.Monad.RWS
 import Control.Monad.ST
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Proxy
 import Data.STRef
 import Data.Vector qualified as V
 import Data.Vector.Unboxed.Mutable qualified as UM
@@ -38,8 +40,8 @@ compile (Program prog) =
 
 vmState0 :: V.Vector FunDecl' -> ST s (STVMState s)
 vmState0 programMemory = do
-  esp <- newSTRef 0
-  ebp <- newSTRef 0
+  esp <- newSTRef maxBound
+  ebp <- newSTRef maxBound
   stackMemory <- UM.replicate 0xFF 0
   pure $ STVMState {..}
 
@@ -71,7 +73,7 @@ runSTVM prog (STVM m) = do
 data STVMError
   = NotAFunctionAddr Address
   | OOBRead
-  | OOBWrite
+  | OOBWrite Address
   | SegFault
   deriving (Eq, Show)
 
@@ -81,17 +83,20 @@ pushFrame :: FrameInfo decl -> STVM s ()
 pushFrame (FrameInfo wbot wtop _) = STVM $ do
   ebpOld <- asks ebp >>= lift . lift . readSTRef
   espOld <- asks esp >>= lift . lift . readSTRef
-  let ebpNew = espOld + wbot
-      espNew = ebpNew + wtop
-  writeValue (\b i -> unSTVM $ writeByte b (fromIntegral i)) ebpOld (fromIntegral ebpNew)
+  let ebpNew = espOld - wbot
+      espNew = ebpNew - wtop
+  -- TODO When writing ebp to the stack here, we manually offset the pointer.
+  -- This is dangerous and should somehow happen automatically.
+  writeValue (\b i -> unSTVM $ writeByte b (fromIntegral i)) ebpOld (fromIntegral ebpNew - byteSize (Proxy @Address))
   asks ebp >>= lift . lift . flip writeSTRef ebpNew
   asks esp >>= lift . lift . flip writeSTRef espNew
 
 popFrame :: FrameInfo decl -> STVM s ()
 popFrame (FrameInfo wbot _ _) = STVM $ do
   ebpNew <- asks ebp >>= lift . lift . readSTRef
-  ebpOld <- readValue (unSTVM . readByte . fromIntegral) (fromIntegral ebpNew)
-  asks esp >>= lift . lift . flip writeSTRef (ebpNew - wbot)
+  -- TODO Same as pushFrame, we manually offset the address we write to
+  ebpOld <- readValue (unSTVM . readByte . fromIntegral) (fromIntegral ebpNew - byteSize (Proxy @Address))
+  asks esp >>= lift . lift . flip writeSTRef (ebpNew + wbot)
   asks ebp >>= lift . lift . flip writeSTRef ebpOld
 
 -- TODO get rid of the Env?
@@ -133,6 +138,6 @@ writeByte :: Word8 -> Address -> STVM s ()
 writeByte byte addr = STVM $ do
   let addr' = unstack addr
   stack <- asks stackMemory
-  if addr' > UM.length stack
-    then throwError OOBWrite
+  if addr' < 0 || addr' >= UM.length stack
+    then error (show addr') --  throwError (OOBWrite addr)
     else UM.write stack addr' byte

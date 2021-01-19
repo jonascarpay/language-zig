@@ -6,14 +6,15 @@
 import Test.Eval
 import Test.Parse
 import Test.Tasty
+import Test.Tasty.Focus
 
 main :: IO ()
 main = do
   ftests <- fileParsing
-  defaultMain $
+  defaultMain . withFocus $
     testGroup
       "tests"
       [ simpleParsing,
         ftests,
-        evalTests
+        focus evalTests
       ]

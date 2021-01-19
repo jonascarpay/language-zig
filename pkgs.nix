@@ -20,6 +20,7 @@ let
         name = "language-zig";
       };
       compiler-nix-name = "ghc8102";
+      modules = [{ enableLibraryProfiling = true; }];
     };
   };
 in

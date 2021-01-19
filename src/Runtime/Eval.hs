@@ -62,6 +62,12 @@ writeValue' v base = do
   let Bytes bytes = encodeValue v
   liftVM $ flip U.imapM_ bytes $ \off b -> vmWriteByte b (vmOffsetPtr base off)
 
+writeValueRev' :: (FixedBytes addr, Monad m) => Value addr -> addr -> VMT addr var info t m ()
+writeValueRev' v base = do
+  VM {..} <- ask
+  let Bytes bytes = encodeValue v
+  liftVM $ flip U.imapM_ bytes $ \off b -> vmWriteByte b (vmOffsetPtr base off)
+
 call :: (FixedBytes addr, Monad m) => [Value addr] -> addr -> VMT addr v i t m (Value addr)
 call args addr = do
   VM {..} <- ask

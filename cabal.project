@@ -3,3 +3,4 @@ packages:
 
 package language-zig
   tests: True
+  profiling: True
