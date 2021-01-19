@@ -79,6 +79,7 @@ data STVMError
 
 type Env = Map Name Address
 
+-- TODO catch stack overflows
 pushFrame :: FrameInfo decl -> STVM s ()
 pushFrame (FrameInfo wbot wtop _) = STVM $ do
   ebpOld <- asks ebp >>= lift . lift . readSTRef
@@ -129,9 +130,11 @@ readByte :: Address -> STVM s Word8
 readByte addr = STVM $ do
   let addr' = unstack addr
   stack <- asks stackMemory
-  if addr' > UM.length stack
-    then throwError OOBRead
-    else UM.read stack $ fromIntegral addr
+  -- TODO re-enable check
+  -- if addr' < 0 || addr' >= UM.length stack
+  --   then throwError OOBRead
+  --   else UM.read stack addr'
+  UM.read stack addr'
 
 -- TODO: see notes for readBytes
 writeByte :: Word8 -> Address -> STVM s ()
@@ -139,5 +142,5 @@ writeByte byte addr = STVM $ do
   let addr' = unstack addr
   stack <- asks stackMemory
   if addr' < 0 || addr' >= UM.length stack
-    then error (show addr') --  throwError (OOBWrite addr)
+    then throwError (OOBWrite addr)
     else UM.write stack addr' byte

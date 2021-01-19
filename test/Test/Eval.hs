@@ -1,13 +1,12 @@
 module Test.Eval where
 
-import Control.Monad
-import Control.Monad.Error
 import Control.Monad.Except
 import Control.Monad.ST
 import Control.Monad.State
 import Data.Bifunctor
 import Data.Map
 import Data.Map qualified as M
+import Data.Void
 import Runtime.AST
 import Runtime.Allocate
 import Runtime.Eval
@@ -17,30 +16,96 @@ import Runtime.Value
 import Test.Tasty
 import Test.Tasty.HUnit
 
-test143 :: [(String, UProgram)]
+{-# ANN test143 "HLINT: ignore Redundant $" #-}
+test143 :: TestTree
 test143 =
-  [ mkCase
-      "return immediately"
-      [decl "main" [] TU8 [Return 143]],
-    mkCase
-      "return expression"
-      [decl "main" [] TU8 [Return $ 11 * 13]],
-    mkCase
-      "return immediately, with unused dummy function"
-      [ decl "main" [] TU8 [Return 143],
-        decl "dummy" [] TVoid []
-      ],
-    mkCase
-      "call second function"
-      [ decl "main" [] TU8 [Return $ Call "ret143" []],
-        decl "ret143" [] TU8 [Return 143]
-      ]
-  ]
+  testGroup
+    "returns 143"
+    [ testGroup
+        "simple"
+        [ mkCase
+            "return immediately"
+            [decl "main" [] TU8 [Return 143]],
+          mkCase
+            "return expression"
+            [decl "main" [] TU8 [Return $ 11 * 13]],
+          mkCase
+            "return immediately, with unused dummy function"
+            [ decl "main" [] TU8 [Return 143],
+              decl "dummy" [] TVoid []
+            ]
+        ],
+      testGroup
+        "variables"
+        [ mkCase
+            "declare unused variable"
+            [decl "main" [] TU8 [Declare ("x", TU8), Return 143]],
+          mkCase
+            "declare and assign unused variable"
+            [ decl "main" [] TU8 $
+                [ "x" .: TU8,
+                  "x" .= 99,
+                  Return 143
+                ]
+            ],
+          mkCase
+            "declare and reassign unused variable"
+            [ decl "main" [] TU8 $
+                [ "x" .: TU8,
+                  "x" .= 99,
+                  "y" .: TU8,
+                  "y" .= (10 * Var "x"),
+                  Return 143
+                ]
+            ],
+          mkCase
+            "declare and return variable"
+            [ decl "main" [] TU8 $
+                [ "x" .: TU8,
+                  "x" .= 143,
+                  "y" .: TU8, -- FIXME crashes if I remove this or change type to void
+                  Return (Var "x")
+                ]
+            ]
+        ],
+      testGroup
+        "functions"
+        [ mkCase
+            "call second function"
+            [ decl "main" [] TU8 [Return $ Call "ret143" []],
+              decl "ret143" [] TU8 [Return 143]
+            ],
+          mkCase
+            "call second function with unused argument"
+            [ decl "main" [] TU8 [Return $ Call "ret143" [99]],
+              decl "ret143" [("_", TU8)] TU8 [Return 143]
+            ],
+          mkCase
+            "return result of identity function"
+            [ decl "main" [] TU8 [Return $ Call "id" [143]],
+              decl "id" [("x", TU8)] TU8 [Return $ Var "x"]
+            ],
+          mkCase
+            "return result of multiplication function"
+            [ decl "main" [] TU8 [Return $ Call "id" [11, 13]],
+              decl "id" [("x", TU8), ("y", TU8)] TU8 [Return $ Var "x" * Var "y"]
+            ]
+        ]
+    ]
   where
-    mkCase :: String -> [(String, UFunctionDecl)] -> (String, UProgram)
-    mkCase name funs = (name, Program $ M.fromList funs)
+    mkCase :: String -> [(String, UFunctionDecl)] -> TestTree
+    mkCase name funs =
+      testCase name $
+        let program = Program $ M.fromList funs
+         in case runProgram program of
+              Right r -> r @?= VU8 143
+              Left err -> assertFailure err
     decl :: String -> [(Name, Type)] -> Type -> [UStatement] -> (String, UFunctionDecl)
     decl name args ret body = (name, FunctionDecl args ret () (Scope body))
+    (.:) :: String -> Type -> UStatement
+    (.:) name t = Declare (name, t)
+    (.=) :: String -> UExpr -> UStatement
+    (.=) name x = Assign name x
 
 vmAllocate :: TProgram -> Either String (Program Offset Offset Address (FrameInfo Name) Type)
 vmAllocate (Program env) = Program <$> traverse f env
@@ -72,10 +137,4 @@ runProgram uprog = do
   first show ret
 
 evalTests :: TestTree
-evalTests =
-  testGroup
-    "Evaluation tests"
-    [ testGroup "143 tests" $
-        flip fmap test143 $ \(name, prog) ->
-          testCase name $ runProgram prog @=? Right (VU8 143)
-    ]
+evalTests = testGroup "Evaluation tests" [test143]

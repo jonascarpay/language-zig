@@ -6,7 +6,6 @@ module Runtime.Eval where
 
 import Control.Monad.Except
 import Control.Monad.Reader
-import Data.Map qualified as M
 import Data.Proxy
 import Data.Vector.Unboxed qualified as U
 import Data.Void
