@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Test.Eval where
 
 import Control.Monad.Except
@@ -6,7 +8,6 @@ import Control.Monad.State
 import Data.Bifunctor
 import Data.Map
 import Data.Map qualified as M
-import Data.Void
 import Runtime.AST
 import Runtime.Allocate
 import Runtime.Eval
@@ -16,7 +17,7 @@ import Runtime.Value
 import Test.Tasty
 import Test.Tasty.HUnit
 
-{-# ANN test143 "HLINT: ignore Redundant $" #-}
+{-# ANN test143 ("HLINT: ignore Redundant $" :: String) #-} -- allows mixed lininess from ormolu
 test143 :: TestTree
 test143 =
   testGroup
@@ -39,7 +40,11 @@ test143 =
         "variables"
         [ mkCase
             "declare unused variable"
-            [decl "main" [] TU8 [Declare ("x", TU8), Return 143]],
+            [ decl "main" [] TU8 $
+                [ "x" .: TU8,
+                  Return 143
+                ]
+            ],
           mkCase
             "declare and assign unused variable"
             [ decl "main" [] TU8 $
@@ -54,7 +59,7 @@ test143 =
                 [ "x" .: TU8,
                   "x" .= 99,
                   "y" .: TU8,
-                  "y" .= (10 * Var "x"),
+                  "y" .= 10 * "x",
                   Return 143
                 ]
             ],
@@ -63,8 +68,8 @@ test143 =
             [ decl "main" [] TU8 $
                 [ "x" .: TU8,
                   "x" .= 143,
-                  "y" .: TU8, -- FIXME crashes if I remove this or change type to void
-                  Return (Var "x")
+                  -- "y" .: TU8, -- FIXME adding a non-void declaration fixes the test, indicating that we can't read from top of stack
+                  Return "x"
                 ]
             ]
         ],
@@ -83,12 +88,12 @@ test143 =
           mkCase
             "return result of identity function"
             [ decl "main" [] TU8 [Return $ Call "id" [143]],
-              decl "id" [("x", TU8)] TU8 [Return $ Var "x"]
+              decl "id" [("x", TU8)] TU8 [Return "x"]
             ],
           mkCase
             "return result of multiplication function"
             [ decl "main" [] TU8 [Return $ Call "id" [11, 13]],
-              decl "id" [("x", TU8), ("y", TU8)] TU8 [Return $ Var "x" * Var "y"]
+              decl "id" [("x", TU8), ("y", TU8)] TU8 [Return $ "x" * "y"]
             ]
         ]
     ]
@@ -104,6 +109,7 @@ test143 =
     decl name args ret body = (name, FunctionDecl args ret () (Scope body))
     (.:) :: String -> Type -> UStatement
     (.:) name t = Declare (name, t)
+    infix 4 .=
     (.=) :: String -> UExpr -> UStatement
     (.=) name x = Assign name x
 

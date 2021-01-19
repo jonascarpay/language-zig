@@ -10,6 +10,7 @@
 module Runtime.AST where
 
 import Data.Map (Map)
+import Data.String (IsString (..))
 import Data.Void
 import Data.Word
 import Runtime.Value
@@ -68,6 +69,9 @@ type TProgram = Program (Name, Type) Name Name () Type
 instance Num (Expr var fun ()) where
   fromInteger = Lit . fromInteger
   a * b = Mul a b
+
+instance IsString var => IsString (Expr var fun ()) where
+  fromString = Var . fromString
 
 pattern Mul :: Expr var fun () -> Expr var fun () -> Expr var fun ()
 pattern Mul l r = () :< MulF l r

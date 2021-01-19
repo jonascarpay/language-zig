@@ -76,6 +76,7 @@ test-suite language-zig-test
     , mtl
     , parser-combinators
     , tasty
+    , tasty-expected-failure
     , tasty-focus
     , tasty-hunit
     , tasty-quickcheck
