@@ -75,6 +75,9 @@ pattern Mul l r = () :< MulF l r
 pattern Lit :: Word8 -> Expr var fun ()
 pattern Lit n = () :< LitF (VU8 n)
 
+pattern Call :: fun -> [Expr var fun ()] -> Expr var fun ()
+pattern Call f args = () :< CallF f args
+
 type Traversal s t a b = forall m. Applicative m => (a -> m b) -> (s -> m t)
 
 exprVars :: Traversal (Expr v f t) (Expr v' f t) v v'

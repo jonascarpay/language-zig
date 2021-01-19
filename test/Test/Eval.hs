@@ -17,11 +17,30 @@ import Runtime.Value
 import Test.Tasty
 import Test.Tasty.HUnit
 
-ret143 :: UProgram
-ret143 = Program $ M.singleton "main" main
+test143 :: [(String, UProgram)]
+test143 =
+  [ mkCase
+      "return immediately"
+      [decl "main" [] TU8 [Return 143]],
+    mkCase
+      "return expression"
+      [decl "main" [] TU8 [Return $ 11 * 13]],
+    mkCase
+      "return immediately, with unused dummy function"
+      [ decl "main" [] TU8 [Return 143],
+        decl "dummy" [] TVoid []
+      ],
+    mkCase
+      "call second function"
+      [ decl "main" [] TU8 [Return $ Call "ret143" []],
+        decl "ret143" [] TU8 [Return 143]
+      ]
+  ]
   where
-    main :: UFunctionDecl
-    main = FunctionDecl [] TU8 () (Scope [Return (11 * 13)])
+    mkCase :: String -> [(String, UFunctionDecl)] -> (String, UProgram)
+    mkCase name funs = (name, Program $ M.fromList funs)
+    decl :: String -> [(Name, Type)] -> Type -> [UStatement] -> (String, UFunctionDecl)
+    decl name args ret body = (name, FunctionDecl args ret () (Scope body))
 
 vmAllocate :: TProgram -> Either String (Program Offset Offset Address (FrameInfo Name) Type)
 vmAllocate (Program env) = Program <$> traverse f env
@@ -55,6 +74,8 @@ runProgram uprog = do
 evalTests :: TestTree
 evalTests =
   testGroup
-    "Eval"
-    [ testCase "143" $ runProgram ret143 @?= Right (VU8 143)
+    "Evaluation tests"
+    [ testGroup "143 tests" $
+        flip fmap test143 $ \(name, prog) ->
+          testCase name $ runProgram prog @=? Right (VU8 143)
     ]
