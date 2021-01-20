@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -10,6 +11,7 @@ import Data.Proxy
 import Data.Vector.Unboxed qualified as U
 import Data.Void
 import Data.Word
+import Prettyprinter
 import Runtime.AST
 import Runtime.Allocate
 import Runtime.Value
@@ -44,6 +46,9 @@ runEval vm m = runReaderT (runExceptT m) vm
 data VMError var addr = TypeError (Value addr) (Value addr)
   deriving (Show)
 
+instance Pretty (VMError var addr) where
+  pretty (TypeError _ _) = "vm runtime error that shouldn't happen fix this error if it does"
+
 liftVM :: Monad m => m r -> VMT a v i t m r
 liftVM = lift . lift
 
@@ -67,14 +72,15 @@ writeValueRev' v base = do
   let Bytes bytes = encodeValue v
   liftVM $ flip U.imapM_ bytes $ \off b -> vmWriteByte b (vmOffsetPtr base off)
 
-call :: (FixedBytes addr, Monad m) => [Value addr] -> addr -> VMT addr v i t m (Value addr)
+call :: (Integral addr, Show addr, FixedBytes addr, Monad m) => [Value addr] -> addr -> VMT addr v i t m (Value addr)
 call args addr = do
   VM {..} <- ask
   FunctionDecl {..} <- liftVM $ vmFunction addr
   liftVM $ vmPushFrame funInfo
-  forM_ (zip args funArgs) $ \(v, off) ->
-    readOffset off >>= writeValue' v
-  evalStatement (unScope funBody)
+  forM_ (zip args funArgs) $ \(v, off) -> readOffset off >>= writeValue' v
+  r <- evalStatement (unScope funBody)
+  liftVM $ vmPopFrame funInfo
+  pure r
 
 readOffset :: Monad m => Offset -> VMT a v i t m a
 readOffset off = do
@@ -86,7 +92,7 @@ readVar :: Monad m => v -> VMT a v i t m a
 readVar var = ask >>= readOffset . ($var) . vmVar
 
 evalStatement ::
-  (FixedBytes addr, Monad m) =>
+  (Integral addr, Show addr, FixedBytes addr, Monad m) =>
   [Statement decl v addr t] ->
   VMT addr v i t m (Value addr)
 evalStatement = go
@@ -103,7 +109,7 @@ evalStatement = go
 -- TODO after type checking, types only matter when reading values?
 -- If so, just put them in the var?
 evalExpr ::
-  (FixedBytes addr, Monad m) =>
+  (Integral addr, Show addr, FixedBytes addr, Monad m) =>
   Expr v addr t ->
   VMT addr v i t m (Value addr)
 evalExpr = go

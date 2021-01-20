@@ -8,6 +8,7 @@ import Control.Monad.Except
 import Control.Monad.State
 import Data.Map (Map)
 import Data.Map qualified as M
+import Prettyprinter
 import Runtime.AST
 import Runtime.Value
 
@@ -25,6 +26,8 @@ data TypeError
   deriving (Show)
 
 type Typecheck a = StateT Env (Either TypeError) a
+
+instance Pretty TypeError
 
 typecheck :: UProgram -> Either TypeError TProgram
 typecheck (Program prg) = Program <$> traverse (typecheckFn env0) prg

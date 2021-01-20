@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -7,6 +8,7 @@ import Control.Applicative
 import Control.Monad.State
 import Data.Map
 import Data.Map qualified as M
+import Prettyprinter
 import Runtime.AST
 
 type Offset = Int
@@ -49,6 +51,22 @@ data FrameInfo symbol = FrameInfo
     stackLayout :: Map symbol Offset
   }
 
+instance Pretty symbol => Pretty (FrameInfo symbol) where
+  pretty (FrameInfo bot top layout) =
+    vsep
+      [ "Frame",
+        indent 2 $
+          vsep
+            [ "bottom" <+> pretty bot,
+              "top" <+> pretty top,
+              "layout",
+              indent 2
+                . vsep
+                . fmap (\(n, off) -> pretty n <+> pretty off)
+                $ M.toList layout
+            ]
+      ]
+
 frameSize :: FrameInfo sym -> Word
 frameSize (FrameInfo bot top _) = top + bot
 
@@ -71,11 +89,11 @@ allocate fBytes fSym bot0 top0 fun = execState (traverseDeclsOrdered registerArg
   where
     registerArg :: decl -> State (FrameInfo symbol) ()
     registerArg decl = modify $ \(FrameInfo b t l) ->
-      FrameInfo (b + fBytes decl) t (M.insert (fSym decl) (fromIntegral $ negate b) l)
+      FrameInfo (b + fBytes decl) t (M.insert (fSym decl) (fromIntegral b + 1) l)
     registerLoc :: decl -> State (FrameInfo symbol) ()
     registerLoc decl = modify $ \(FrameInfo b t l) ->
       let t' = t + fBytes decl
-       in FrameInfo b t' (M.insert (fSym decl) (fromIntegral t') l)
+       in FrameInfo b t' (M.insert (fSym decl) (negate $ fromIntegral t' -1) l)
 
 -- more postive
 --   Arguments

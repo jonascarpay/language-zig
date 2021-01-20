@@ -75,6 +75,7 @@ test-suite language-zig-test
     , megaparsec
     , mtl
     , parser-combinators
+    , prettyprinter
     , tasty
     , tasty-expected-failure
     , tasty-focus

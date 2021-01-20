@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
@@ -10,9 +11,11 @@
 module Runtime.AST where
 
 import Data.Map (Map)
+import Data.Map qualified as M
 import Data.String (IsString (..))
 import Data.Void
 import Data.Word
+import Prettyprinter
 import Runtime.Value
 
 data Cofree f a = (:<) {extract :: a, unwrap :: f (Cofree f a)}
@@ -33,26 +36,60 @@ data FunctionDecl decl var fun finfo t = FunctionDecl
     funBody :: Scope decl var fun t
   }
 
+instance (Pretty fun, Pretty t, Pretty finfo, Pretty var, Pretty decl) => Pretty (FunctionDecl decl var fun finfo t) where
+  pretty (FunctionDecl args ret info body) =
+    vsep
+      [ "fn" <> tupled (pretty <$> args) <+> pretty ret,
+        indent 2 $ pretty body,
+        pretty info
+      ]
+
 newtype Scope d v f t = Scope {unScope :: [Statement d v f t]}
 
+instance (Pretty d, Pretty v, Pretty f, Pretty t) => Pretty (Scope d v f t) where
+  pretty (Scope stmt) =
+    vsep
+      [ "{" <+> align (vsep $ fmap (<> ";") $ pretty <$> stmt),
+        "}"
+      ]
+
+-- TODO Maybe drop Cofree and just inline the recursive case
 data ExprF var fun e
   = MulF e e
   | LitF (Value Void)
   | VarF var
   | CallF fun [e]
-
-data Statement d v f t
-  = Return (Expr v f t)
-  | Declare d -- TODO put type in `d`?
-  | Assign v (Expr v f t)
-
-newtype Program decl var fun finfo t = Program {progFunctions :: Map Name (FunctionDecl decl var fun finfo t)}
+  deriving (Eq, Show)
 
 type Expr var fun t = t :< ExprF var fun
 
 type UExpr = Expr Name Name ()
 
 type TExpr = Expr Name Name Type
+
+instance (Pretty var, Pretty fun, Pretty t) => Pretty (Expr var fun t) where
+  pretty (t :< MulF l r) =
+    "mul" <+> align (vsep [":" <+> pretty t, pretty l, pretty r])
+  pretty (_ :< LitF x) = "lit" <+> pretty x
+  pretty (_ :< VarF x) = pretty x
+  pretty (_ :< CallF fun args) = pretty fun <> tupled (pretty <$> args)
+
+data Statement d v f t
+  = Return (Expr v f t)
+  | Declare d -- TODO put type in `d`?
+  | Assign v (Expr v f t)
+
+instance (Pretty d, Pretty f, Pretty v, Pretty t) => Pretty (Statement d v f t) where
+  pretty (Return e) = "return" <+> pretty e
+  pretty (Declare d) = pretty d
+  pretty (Assign v e) = pretty v <+> "<-" <+> pretty e
+
+newtype Program decl var fun finfo t = Program {progFunctions :: Map Name (FunctionDecl decl var fun finfo t)}
+
+instance (Pretty fun, Pretty t, Pretty var, Pretty finfo, Pretty decl) => Pretty (Program decl var fun finfo t) where
+  pretty (Program funs) = vsep $ renderFn <$> M.toList funs
+    where
+      renderFn (name, decl) = pretty name <+> "=" <+> pretty decl
 
 type UStatement = Statement (Name, Type) Name Name ()
 

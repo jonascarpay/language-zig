@@ -1,6 +1,7 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Runtime.Value where
@@ -9,9 +10,13 @@ import Data.Bits
 import Data.Proxy
 import Data.Vector.Unboxed qualified as U
 import Data.Word
+import Prettyprinter
 
 data FunctionType = FunctionType [Type] Type
   deriving (Eq, Show)
+
+instance Pretty FunctionType where
+  pretty (FunctionType args ret) = "fn" <> tupled (pretty <$> args) <> pretty ret
 
 -- It may be tempting to join Type and Value, since the constructors obviously overlap.
 -- I've tried this before, and have come to the conclusion that at least for now, there is little benefit to doing so.
@@ -28,11 +33,22 @@ data Type
   | TFunPtr FunctionType
   deriving (Eq, Show)
 
+instance Pretty Type where
+  pretty TU8 = "u8"
+  pretty TVoid = "void"
+  pretty (TPtr t) = "*" <> parens (pretty t)
+  pretty (TFunPtr t) = "*" <> parens (pretty t)
+
 data Value addr
   = VU8 Word8
   | VVoid
   | VPtr addr
   deriving (Eq, Show, Functor, Foldable, Traversable)
+
+instance Pretty addr => Pretty (Value addr) where
+  pretty (VU8 b) = pretty b
+  pretty VVoid = "(void value)"
+  pretty (VPtr a) = pretty a
 
 -- Any pointer is a void pointer
 toType :: Value addr -> Type
@@ -41,7 +57,7 @@ toType VVoid = TVoid
 toType (VPtr _) = TPtr TVoid
 
 typeBytes :: Int -> Type -> Int
-typeBytes _ TU8 = 8
+typeBytes _ TU8 = 1
 typeBytes _ TVoid = 0
 typeBytes n (TPtr _) = n
 typeBytes n (TFunPtr _) = n
@@ -71,7 +87,7 @@ class FixedBytes a where
   --   bytes, but it is probably better to assume 0-padding.
   fromBytes :: Bytes -> a
   default fromBytes :: (FiniteBits a, Integral a) => Bytes -> a
-  fromBytes (Bytes bs) = U.ifoldr (\i b a -> a .&. shiftL (fromIntegral b) (i * 8)) zeroBits bs
+  fromBytes (Bytes bs) = U.ifoldr (\i b a -> a .|. shiftL (fromIntegral b) (i * 8)) zeroBits bs
   {-# INLINE fromBytes #-}
 
 instance FixedBytes Word8 where
