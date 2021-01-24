@@ -36,22 +36,10 @@ data FunctionDecl decl var fun finfo t = FunctionDecl
     funBody :: Scope decl var fun t
   }
 
-instance (Pretty fun, Pretty t, Pretty finfo, Pretty var, Pretty decl) => Pretty (FunctionDecl decl var fun finfo t) where
-  pretty (FunctionDecl args ret info body) =
-    vsep
-      [ "fn" <> tupled (pretty <$> args) <+> pretty ret,
-        indent 2 $ pretty body,
-        pretty info
-      ]
-
-newtype Scope d v f t = Scope {unScope :: [Statement d v f t]}
-
-instance (Pretty d, Pretty v, Pretty f, Pretty t) => Pretty (Scope d v f t) where
-  pretty (Scope stmt) =
-    vsep
-      [ "{" <+> align (vsep $ fmap (<> ";") $ pretty <$> stmt),
-        "}"
-      ]
+data Statement d v f t
+  = Return (Expr v f t)
+  | Declare d -- TODO put type in `d`?
+  | Assign v (Expr v f t)
 
 -- TODO Maybe drop Cofree and just inline the recursive case
 data ExprF var fun e
@@ -60,6 +48,23 @@ data ExprF var fun e
   | VarF var
   | CallF fun [e]
   deriving (Eq, Show)
+
+newtype Scope d v f t = Scope {unScope :: [Statement d v f t]}
+
+instance (Pretty fun, Pretty t, Pretty finfo, Pretty var, Pretty decl) => Pretty (FunctionDecl decl var fun finfo t) where
+  pretty (FunctionDecl args ret info body) =
+    vsep
+      [ "fn" <> tupled (pretty <$> args) <+> pretty ret,
+        indent 2 $ pretty body,
+        pretty info
+      ]
+
+instance (Pretty d, Pretty v, Pretty f, Pretty t) => Pretty (Scope d v f t) where
+  pretty (Scope stmt) =
+    vsep
+      [ "{" <+> align (vsep $ fmap (<> ";") $ pretty <$> stmt),
+        "}"
+      ]
 
 type Expr var fun t = t :< ExprF var fun
 
@@ -73,11 +78,6 @@ instance (Pretty var, Pretty fun, Pretty t) => Pretty (Expr var fun t) where
   pretty (_ :< LitF x) = "lit" <+> pretty x
   pretty (_ :< VarF x) = pretty x
   pretty (_ :< CallF fun args) = pretty fun <> tupled (pretty <$> args)
-
-data Statement d v f t
-  = Return (Expr v f t)
-  | Declare d -- TODO put type in `d`?
-  | Assign v (Expr v f t)
 
 instance (Pretty d, Pretty f, Pretty v, Pretty t) => Pretty (Statement d v f t) where
   pretty (Return e) = "return" <+> pretty e
